@@ -1,4 +1,3 @@
-
 interface GitHubConfig {
   repository: string;
   branch: string;
@@ -40,10 +39,23 @@ export class GitHubDocsService {
   private cache: Map<string, DocContent> = new Map();
   private lastCommitSha: string | null = null;
   private listeners: Set<() => void> = new Set();
+  private initialized: boolean = false;
 
   constructor(config: GitHubConfig) {
     this.config = config;
-    this.startPolling();
+    this.initializeService();
+  }
+
+  private async initializeService(): Promise<void> {
+    try {
+      // Preload all docs immediately
+      await this.getAllDocs();
+      this.initialized = true;
+      this.startPolling();
+    } catch (error) {
+      console.error('Failed to initialize GitHub service:', error);
+      this.startPolling(); // Still start polling even if initial load fails
+    }
   }
 
   private getApiUrl(path: string): string {
@@ -160,21 +172,34 @@ export class GitHubDocsService {
   }
 
   async getDocBySlug(slug: string): Promise<DocContent | null> {
-    try {
-      const filePath = slug.endsWith('.md') ? slug : `${slug}.md`;
-      const content = await this.getFileContent(filePath);
-      const { metadata, content: markdownContent } = this.parseFrontmatter(content);
-      
-      return {
-        ...metadata,
-        slug,
-        content: markdownContent,
-        path: filePath
-      };
-    } catch (error) {
-      console.error(`Error getting doc ${slug}:`, error);
-      return null;
+    // Return from cache if available
+    if (this.cache.has(slug)) {
+      return this.cache.get(slug) || null;
     }
+
+    // If not in cache and not initialized, try to fetch
+    if (!this.initialized) {
+      try {
+        const filePath = slug.endsWith('.md') ? slug : `${slug}.md`;
+        const content = await this.getFileContent(filePath);
+        const { metadata, content: markdownContent } = this.parseFrontmatter(content);
+        
+        const doc = {
+          ...metadata,
+          slug,
+          content: markdownContent,
+          path: filePath
+        };
+
+        this.cache.set(slug, doc);
+        return doc;
+      } catch (error) {
+        console.error(`Error getting doc ${slug}:`, error);
+        return null;
+      }
+    }
+
+    return null;
   }
 
   async getAllDocs(): Promise<DocContent[]> {
@@ -182,7 +207,8 @@ export class GitHubDocsService {
       const files = await this.getFileTree();
       const docs: DocContent[] = [];
 
-      for (const file of files) {
+      // Process all files concurrently for better performance
+      const filePromises = files.map(async (file) => {
         try {
           const content = await this.getFileContent(file.path.replace(`${this.config.basePath}/`, ''));
           const { metadata, content: markdownContent } = this.parseFrontmatter(content);
@@ -191,22 +217,27 @@ export class GitHubDocsService {
             .replace(`${this.config.basePath}/`, '')
             .replace('.md', '');
 
-          docs.push({
+          return {
             ...metadata,
             slug,
             content: markdownContent,
             path: file.path,
             sha: file.sha
-          });
+          };
         } catch (error) {
           console.error(`Error processing file ${file.path}:`, error);
+          return null;
         }
-      }
+      });
 
-      // Cache the results
+      const results = await Promise.all(filePromises);
+      docs.push(...results.filter(doc => doc !== null) as DocContent[]);
+
+      // Update cache with all docs
       this.cache.clear();
       docs.forEach(doc => this.cache.set(doc.slug, doc));
 
+      console.log(`Loaded ${docs.length} docs from GitHub`);
       return docs.sort((a, b) => (a.order || 0) - (b.order || 0));
     } catch (error) {
       console.error('Error getting all docs:', error);
@@ -349,6 +380,10 @@ export class GitHubDocsService {
 
   getCachedDocs(): DocContent[] {
     return Array.from(this.cache.values()).sort((a, b) => (a.order || 0) - (b.order || 0));
+  }
+
+  isInitialized(): boolean {
+    return this.initialized;
   }
 }
 

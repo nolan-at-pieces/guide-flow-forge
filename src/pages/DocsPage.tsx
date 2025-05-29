@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Edit } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
-import { useGitHubDocs } from "@/hooks/useGitHubDocs";
+import { useGitHubDocs, useGitHubDocsList } from "@/hooks/useGitHubDocs";
 import { DocContent } from "@/services/githubApi";
 
 interface DocMeta {
@@ -39,6 +38,7 @@ const DocsPage = () => {
   const { user, isAdmin, isEditor } = useAuth();
   const navigate = useNavigate();
   const { service, isConfigured } = useGitHubDocs();
+  const { docs, initialized } = useGitHubDocsList();
 
   useEffect(() => {
     const loadDoc = async () => {
@@ -46,8 +46,28 @@ const DocsPage = () => {
       setError(null);
       setNotFound(false);
 
-      // If GitHub is configured, try to fetch from GitHub
-      if (isConfigured && service) {
+      // If GitHub is configured and docs are loaded, get from cache
+      if (isConfigured && service && initialized && docs.length > 0) {
+        const doc = docs.find(d => d.slug === slug);
+        
+        if (doc) {
+          setDocContent(doc.content);
+          setDocMeta({
+            title: doc.title,
+            description: doc.description || undefined,
+            order: doc.order || 0,
+            icon: doc.icon || undefined,
+            tags: doc.tags || undefined,
+          });
+        } else {
+          setNotFound(true);
+        }
+        setLoading(false);
+        return;
+      }
+
+      // If GitHub is configured but not yet initialized, try to fetch directly
+      if (isConfigured && service && !initialized) {
         try {
           const doc = await service.getDocBySlug(slug);
           
@@ -247,7 +267,7 @@ Understand API rate limits and best practices.
     };
 
     loadDoc();
-  }, [slug, service, isConfigured]);
+  }, [slug, service, isConfigured, docs, initialized]);
 
   if (loading) {
     return (

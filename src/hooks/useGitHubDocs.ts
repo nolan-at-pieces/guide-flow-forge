@@ -65,7 +65,7 @@ export const useGitHubDocsList = () => {
   const [docs, setDocs] = useState<DocContent[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+  const [initialized, setInitialized] = useState(false);
 
   const fetchDocs = useCallback(async () => {
     if (!service) return;
@@ -75,7 +75,7 @@ export const useGitHubDocsList = () => {
     try {
       const allDocs = await service.getAllDocs();
       setDocs(allDocs);
-      setLastUpdate(new Date());
+      setInitialized(true);
     } catch (err) {
       console.error('Error fetching docs:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch documents');
@@ -84,7 +84,7 @@ export const useGitHubDocsList = () => {
     }
   }, [service]);
 
-  // Set up real-time listener
+  // Set up real-time listener and initial load
   useEffect(() => {
     if (!service) return;
 
@@ -92,13 +92,21 @@ export const useGitHubDocsList = () => {
       console.log('Docs updated from GitHub, refreshing...');
       const cachedDocs = service.getCachedDocs();
       setDocs(cachedDocs);
-      setLastUpdate(new Date());
     };
 
     service.addListener(handleUpdate);
 
-    // Initial fetch
-    fetchDocs();
+    // Check if service is already initialized with cached docs
+    if (service.isInitialized()) {
+      const cachedDocs = service.getCachedDocs();
+      if (cachedDocs.length > 0) {
+        setDocs(cachedDocs);
+        setInitialized(true);
+      }
+    } else {
+      // If not initialized, trigger fetch
+      fetchDocs();
+    }
 
     return () => {
       service.removeListener(handleUpdate);
@@ -109,7 +117,7 @@ export const useGitHubDocsList = () => {
     docs,
     loading,
     error,
-    lastUpdate,
+    initialized,
     refetch: fetchDocs
   };
 };

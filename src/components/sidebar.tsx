@@ -27,17 +27,19 @@ const Sidebar = ({ activeSection }: SidebarProps) => {
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const [docTree, setDocTree] = useState<DocItem[]>([]);
   const location = useLocation();
-  const { docs, loading, error, lastUpdate } = useGitHubDocsList();
+  const { docs, loading, error, initialized } = useGitHubDocsList();
   const { user, isAdmin, isEditor } = useAuth();
 
   useEffect(() => {
-    console.log('Building navigation from GitHub docs:', docs.length, 'docs loaded');
-    const tree = buildTreeFromDocs(docs, activeSection);
-    setDocTree(tree);
-  }, [docs, activeSection, lastUpdate]);
+    if (docs.length > 0) {
+      console.log('Building navigation from GitHub docs:', docs.length, 'docs loaded');
+      const tree = buildTreeFromDocs(docs, activeSection);
+      setDocTree(tree);
+    }
+  }, [docs, activeSection]);
 
   const buildTreeFromDocs = (docs: any[], section: string): DocItem[] => {
-    console.log('Building tree for section:', section, 'with docs:', docs.map(d => d.slug));
+    console.log('Building tree for section:', section, 'with docs:', docs.map(d => `${d.slug} (${d.title})`));
     
     // Filter docs by section and build hierarchy
     const sectionDocs = docs.filter(doc => {
@@ -54,7 +56,7 @@ const Sidebar = ({ activeSection }: SidebarProps) => {
       return false;
     });
 
-    console.log('Filtered docs for section:', sectionDocs.map(d => d.slug));
+    console.log('Filtered docs for section:', sectionDocs.map(d => `${d.slug} (${d.title})`));
 
     if (sectionDocs.length === 0) {
       return [];
@@ -74,7 +76,7 @@ const Sidebar = ({ activeSection }: SidebarProps) => {
       if (parts.length === 1) {
         // Top-level document
         grouped[topLevel].unshift({
-          title: doc.title,
+          title: doc.title || topLevel.replace('-', ' '),
           slug: doc.slug,
           order: doc.order || 0,
           icon: doc.icon
@@ -82,7 +84,7 @@ const Sidebar = ({ activeSection }: SidebarProps) => {
       } else {
         // Child document
         grouped[topLevel].push({
-          title: doc.title,
+          title: doc.title || parts[parts.length - 1].replace('-', ' '),
           slug: doc.slug,
           order: doc.order || 0,
           icon: doc.icon
@@ -204,7 +206,7 @@ const Sidebar = ({ activeSection }: SidebarProps) => {
     );
   };
 
-  if (loading && docTree.length === 0) {
+  if (loading && !initialized) {
     return (
       <div className="p-3">
         <div className="animate-pulse space-y-2">
@@ -244,14 +246,6 @@ const Sidebar = ({ activeSection }: SidebarProps) => {
   return (
     <div className="p-0">
       <nav className="space-y-1">
-        {/* Real-time update indicator */}
-        {lastUpdate && (
-          <div className="px-3 py-1 text-xs text-muted-foreground">
-            <span title={`Last updated: ${lastUpdate.toLocaleTimeString()}`}>
-              📡 Live from GitHub
-            </span>
-          </div>
-        )}
         {docTree.map(item => renderDocItem(item))}
       </nav>
     </div>
