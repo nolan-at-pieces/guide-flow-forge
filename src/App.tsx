@@ -7,19 +7,24 @@ import { ThemeProvider } from "@/components/theme-provider";
 import Layout from "@/components/layout";
 import Home from "@/pages/Home";
 import DocsPage from "@/pages/DocsPage";
+import { routeConfig } from "@/config/routes";
 
 const queryClient = new QueryClient();
 
-const AppContent = () => (
-  <Routes>
-    <Route path="/" element={
-      <Layout>
-        <Home />
-      </Layout>
-    } />
-    <Route path="/*" element={<DocsPage />} />
-  </Routes>
-);
+const AppContent = () => {
+  const docsPath = routeConfig.urlPrefix ? `/${routeConfig.urlPrefix}/*` : "/*";
+  
+  return (
+    <Routes>
+      <Route path="/" element={
+        <Layout>
+          <Home />
+        </Layout>
+      } />
+      <Route path={docsPath} element={<DocsPage />} />
+    </Routes>
+  );
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>

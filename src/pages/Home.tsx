@@ -3,6 +3,7 @@ import { ArrowRight, BookOpen, Search, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Link } from "react-router-dom";
+import { routeConfig } from "@/config/routes";
 
 const Home = () => {
   return (
@@ -19,13 +20,13 @@ const Home = () => {
         </div>
         <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
           <Button asChild size="lg" className="h-12 px-8">
-            <Link to="/docs/getting-started">
+            <Link to={routeConfig.buildPath("getting-started")}>
               Get Started
               <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           </Button>
           <Button variant="outline" size="lg" asChild className="h-12 px-8">
-            <Link to="/docs/api-reference">
+            <Link to={routeConfig.buildPath("api-reference")}>
               API Reference
             </Link>
           </Button>
@@ -73,7 +74,7 @@ const Home = () => {
       <section className="space-y-8">
         <h2 className="text-3xl font-bold text-center">Popular Topics</h2>
         <div className="grid gap-6 md:grid-cols-2">
-          <Link to="/docs/getting-started">
+          <Link to={routeConfig.buildPath("getting-started")}>
             <Card className="cursor-pointer hover:shadow-md transition-all duration-200 border hover:border-primary/20">
               <CardHeader>
                 <CardTitle className="text-xl flex items-center">
@@ -86,7 +87,7 @@ const Home = () => {
               </CardHeader>
             </Card>
           </Link>
-          <Link to="/docs/api-reference">
+          <Link to={routeConfig.buildPath("api-reference")}>
             <Card className="cursor-pointer hover:shadow-md transition-all duration-200 border hover:border-primary/20">
               <CardHeader>
                 <CardTitle className="text-xl flex items-center">
@@ -99,7 +100,7 @@ const Home = () => {
               </CardHeader>
             </Card>
           </Link>
-          <Link to="/docs/examples">
+          <Link to={routeConfig.buildPath("examples")}>
             <Card className="cursor-pointer hover:shadow-md transition-all duration-200 border hover:border-primary/20">
               <CardHeader>
                 <CardTitle className="text-xl flex items-center">
@@ -112,7 +113,7 @@ const Home = () => {
               </CardHeader>
             </Card>
           </Link>
-          <Link to="/docs/troubleshooting">
+          <Link to={routeConfig.buildPath("troubleshooting")}>
             <Card className="cursor-pointer hover:shadow-md transition-all duration-200 border hover:border-primary/20">
               <CardHeader>
                 <CardTitle className="text-xl flex items-center">

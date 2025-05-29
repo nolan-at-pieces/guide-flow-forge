@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +6,7 @@ import TableOfContentsComponent from "@/components/table-of-contents";
 import Layout from "@/components/layout";
 import DocNotFound from "@/components/doc-not-found";
 import DocError from "@/components/doc-error";
+import { routeConfig } from "@/config/routes";
 
 interface DocMeta {
   title: string;
@@ -20,8 +20,8 @@ const DocsPage = () => {
   const params = useParams();
   const location = useLocation();
   
-  // Remove leading slash and use as slug, default to getting-started
-  const slug = location.pathname.slice(1) || "getting-started";
+  // Use the route config to extract slug
+  const slug = routeConfig.extractSlug(location.pathname) || "getting-started";
   
   const [docContent, setDocContent] = useState("");
   const [docMeta, setDocMeta] = useState<DocMeta | null>(null);
@@ -74,9 +74,9 @@ project.init().then(() => {
 
 ## Next Steps
 
-- Read the [API Reference](/api-reference)
-- Check out [Examples](/examples)
-- Learn about [Advanced Topics](/advanced)
+- Read the [API Reference](${routeConfig.buildPath('api-reference')})
+- Check out [Examples](${routeConfig.buildPath('examples')})
+- Learn about [Advanced Topics](${routeConfig.buildPath('advanced')})
             `,
             meta: {
               title: "Getting Started",

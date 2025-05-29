@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Search } from "lucide-react";
 import {
@@ -9,6 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { routeConfig } from "@/config/routes";
 
 interface SearchResult {
   title: string;
@@ -91,7 +91,7 @@ const SearchDialog = ({ open, onOpenChange }: SearchDialogProps) => {
                   key={result.slug}
                   className="cursor-pointer rounded-md p-3 hover:bg-accent"
                   onClick={() => {
-                    window.location.href = `/${result.slug}`;
+                    window.location.href = routeConfig.buildPath(result.slug);
                     onOpenChange(false);
                   }}
                 >

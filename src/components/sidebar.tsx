@@ -1,9 +1,9 @@
-
 import { useState, useEffect } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useLocation, Link } from "react-router-dom";
+import { routeConfig } from "@/config/routes";
 
 interface DocItem {
   title: string;
@@ -72,9 +72,9 @@ const Sidebar = () => {
     ];
     setDocTree(mockDocs);
     
-    // Auto-expand the current section
-    const currentPath = location.pathname.slice(1); // Remove leading slash
-    const topLevelSection = currentPath.split('/')[0];
+    // Auto-expand the current section using route config
+    const currentSlug = routeConfig.extractSlug(location.pathname);
+    const topLevelSection = currentSlug.split('/')[0];
     if (topLevelSection) {
       setExpandedItems(new Set([topLevelSection]));
     }
@@ -93,8 +93,9 @@ const Sidebar = () => {
   const renderDocItem = (item: DocItem, level = 0) => {
     const hasChildren = item.children && item.children.length > 0;
     const isExpanded = expandedItems.has(item.slug);
-    const isActive = location.pathname === `/${item.slug}`;
-    const isInActivePath = location.pathname.startsWith(`/${item.slug}/`);
+    const fullPath = routeConfig.buildPath(item.slug);
+    const isActive = location.pathname === fullPath;
+    const isInActivePath = location.pathname.startsWith(`${fullPath}/`);
 
     return (
       <div key={item.slug} className="space-y-1">
@@ -116,7 +117,7 @@ const Sidebar = () => {
             <div className="w-6" />
           )}
           <Link
-            to={`/${item.slug}`}
+            to={fullPath}
             className={cn(
               "flex-1 block rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent hover:text-accent-foreground",
               (isActive || isInActivePath) && "bg-accent text-accent-foreground font-medium",
