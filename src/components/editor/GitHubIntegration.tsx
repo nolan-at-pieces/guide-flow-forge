@@ -5,58 +5,31 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
-import { Github, GitBranch, Upload, Settings } from 'lucide-react';
+import { Github, GitBranch, Upload, Settings, CheckCircle } from 'lucide-react';
+import { useGitHubDocs } from '@/hooks/useGitHubDocs';
 
 interface GitHubIntegrationProps {
-  onPublish: (config: GitHubConfig) => Promise<void>;
-}
-
-interface GitHubConfig {
-  repository: string;
-  branch: string;
-  token: string;
-  basePath: string;
+  onPublish: (config: any) => Promise<void>;
 }
 
 const GitHubIntegration = ({ onPublish }: GitHubIntegrationProps) => {
   const { toast } = useToast();
-  const [config, setConfig] = useState<GitHubConfig>({
-    repository: '',
-    branch: 'main',
-    token: '',
-    basePath: 'docs'
-  });
-  const [isConfigured, setIsConfigured] = useState(false);
+  const { config, isConfigured } = useGitHubDocs();
   const [isPublishing, setIsPublishing] = useState(false);
 
-  const handleSaveConfig = () => {
-    if (!config.repository || !config.token) {
+  const handlePublish = async () => {
+    if (!isConfigured) {
       toast({
         title: "Error",
-        description: "Repository and token are required",
+        description: "GitHub is not configured",
         variant: "destructive",
       });
       return;
     }
 
-    // In a real implementation, you'd store this securely
-    localStorage.setItem('github-config', JSON.stringify(config));
-    setIsConfigured(true);
-    
-    toast({
-      title: "Success",
-      description: "GitHub configuration saved",
-    });
-  };
-
-  const handlePublish = async () => {
     setIsPublishing(true);
     try {
       await onPublish(config);
-      toast({
-        title: "Success",
-        description: "Documentation published to GitHub",
-      });
     } catch (error) {
       toast({
         title: "Error",
@@ -68,6 +41,33 @@ const GitHubIntegration = ({ onPublish }: GitHubIntegrationProps) => {
     }
   };
 
+  if (!isConfigured) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Github className="w-5 h-5" />
+            GitHub Integration
+          </CardTitle>
+          <CardDescription>
+            GitHub integration not configured
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-4">
+            <p className="text-sm text-muted-foreground mb-4">
+              Configure GitHub integration in the admin panel to enable direct publishing.
+            </p>
+            <Button variant="outline" size="sm">
+              <Settings className="w-4 h-4 mr-2" />
+              Configure in Admin
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -76,81 +76,46 @@ const GitHubIntegration = ({ onPublish }: GitHubIntegrationProps) => {
           GitHub Integration
         </CardTitle>
         <CardDescription>
-          Publish your documentation directly to GitHub repository
+          Connected to GitHub repository
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {!isConfigured ? (
-          <>
-            <div>
-              <label className="block text-sm font-medium mb-1">Repository</label>
-              <Input
-                value={config.repository}
-                onChange={(e) => setConfig({ ...config, repository: e.target.value })}
-                placeholder="username/repository-name"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium mb-1">Branch</label>
-              <Input
-                value={config.branch}
-                onChange={(e) => setConfig({ ...config, branch: e.target.value })}
-                placeholder="main"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium mb-1">Personal Access Token</label>
-              <Input
-                type="password"
-                value={config.token}
-                onChange={(e) => setConfig({ ...config, token: e.target.value })}
-                placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium mb-1">Base Path</label>
-              <Input
-                value={config.basePath}
-                onChange={(e) => setConfig({ ...config, basePath: e.target.value })}
-                placeholder="docs"
-              />
-            </div>
-            
-            <Button onClick={handleSaveConfig} className="w-full">
-              <Settings className="w-4 h-4 mr-2" />
-              Save Configuration
-            </Button>
-          </>
-        ) : (
-          <div className="space-y-4">
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <CheckCircle className="w-4 h-4 text-green-500" />
+            <span className="text-sm font-medium">Connected</span>
+          </div>
+          
+          <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <Badge variant="secondary">
+              <Badge variant="secondary" className="text-xs">
                 <GitBranch className="w-3 h-3 mr-1" />
-                {config.repository}:{config.branch}
+                {config?.repository}:{config?.branch}
               </Badge>
             </div>
             
-            <Button 
-              onClick={handlePublish} 
-              disabled={isPublishing}
-              className="w-full"
-            >
-              <Upload className="w-4 h-4 mr-2" />
-              {isPublishing ? 'Publishing...' : 'Publish to GitHub'}
-            </Button>
-            
-            <Button 
-              variant="outline" 
-              onClick={() => setIsConfigured(false)}
-              size="sm"
-            >
-              Reconfigure
-            </Button>
+            <div className="text-xs text-muted-foreground">
+              Docs path: /{config?.basePath}
+            </div>
           </div>
-        )}
+          
+          <div className="p-3 bg-blue-50 border border-blue-200 rounded text-sm">
+            <p className="text-blue-800 font-medium">Auto-sync enabled</p>
+            <p className="text-blue-700 text-xs mt-1">
+              Changes are automatically committed to GitHub when you save.
+            </p>
+          </div>
+          
+          <Button 
+            onClick={handlePublish} 
+            disabled={isPublishing}
+            className="w-full"
+            variant="outline"
+          >
+            <Upload className="w-4 h-4 mr-2" />
+            {isPublishing ? 'Publishing...' : 'Publish Current Page'}
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

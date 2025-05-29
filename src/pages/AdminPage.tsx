@@ -1,6 +1,6 @@
+
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -8,37 +8,38 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/components/ui/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useNavigate } from 'react-router-dom';
-
-interface DocContent {
-  id: string;
-  slug: string;
-  title: string;
-  content: string;
-  description?: string;
-  order_index?: number;
-  icon?: string;
-  tags?: string[];
-  is_published?: boolean;
-  created_at: string;
-  updated_at: string;
-}
+import { useGitHubDocs, useGitHubDocsList } from '@/hooks/useGitHubDocs';
+import { DocContent, GitHubConfig } from '@/services/githubApi';
+import { Github, Settings, FileText, Plus } from 'lucide-react';
 
 const AdminPage = () => {
   const { user, isAdmin, isEditor, signOut, loading } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [content, setContent] = useState<DocContent[]>([]);
-  const [selectedContent, setSelectedContent] = useState<DocContent | null>(null);
+  
+  // GitHub integration
+  const { service, config, isConfigured, saveConfig, clearConfig } = useGitHubDocs();
+  const { docs, loading: docsLoading, error: docsError, refetch } = useGitHubDocsList();
+  
+  // GitHub configuration state
+  const [gitHubConfig, setGitHubConfig] = useState<GitHubConfig>({
+    repository: '',
+    branch: 'main',
+    token: '',
+    basePath: 'docs'
+  });
+
+  // Document editing state
+  const [selectedDoc, setSelectedDoc] = useState<DocContent | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     slug: '',
     title: '',
     content: '',
     description: '',
-    order_index: 0,
+    order: 0,
     icon: '',
-    tags: '',
-    is_published: true
+    tags: ''
   });
 
   // Debug logging
@@ -46,6 +47,13 @@ const AdminPage = () => {
   console.log('AdminPage - isAdmin:', isAdmin);
   console.log('AdminPage - isEditor:', isEditor);
   console.log('AdminPage - loading:', loading);
+
+  useEffect(() => {
+    // Load existing config on mount
+    if (config) {
+      setGitHubConfig(config);
+    }
+  }, [config]);
 
   useEffect(() => {
     // Don't redirect while still loading
@@ -59,11 +67,8 @@ const AdminPage = () => {
     
     if (!isAdmin && !isEditor) {
       console.log('User has no admin/editor roles, staying on page but showing message');
-      // Don't redirect, just show a message instead
       return;
     }
-
-    fetchContent();
   }, [user, isAdmin, isEditor, navigate, loading]);
 
   // Show loading state
@@ -132,61 +137,63 @@ const AdminPage = () => {
     );
   }
 
-  const fetchContent = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('doc_content')
-        .select('*')
-        .order('order_index', { ascending: true });
-
-      if (error) throw error;
-      setContent(data || []);
-    } catch (error: any) {
+  const handleSaveGitHubConfig = () => {
+    if (!gitHubConfig.repository || !gitHubConfig.token) {
       toast({
         title: "Error",
-        description: error.message,
+        description: "Repository and token are required",
         variant: "destructive",
       });
+      return;
     }
+
+    saveConfig(gitHubConfig);
+    toast({
+      title: "Success",
+      description: "GitHub configuration saved successfully!",
+    });
   };
 
-  const handleSave = async () => {
+  const handleSaveDoc = async () => {
+    if (!service) {
+      toast({
+        title: "Error",
+        description: "GitHub is not configured",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!formData.title.trim() || !formData.slug.trim() || !formData.content.trim()) {
+      toast({
+        title: "Error",
+        description: "Title, slug, and content are required",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
-      const saveData = {
-        slug: formData.slug,
-        title: formData.title,
-        content: formData.content,
-        description: formData.description || null,
-        order_index: formData.order_index,
-        icon: formData.icon || null,
-        tags: formData.tags ? formData.tags.split(',').map(tag => tag.trim()) : null,
-        is_published: formData.is_published,
-        updated_by: user?.id,
-        ...(isEditing ? {} : { created_by: user?.id })
+      const docData: DocContent = {
+        title: formData.title.trim(),
+        slug: formData.slug.trim(),
+        content: formData.content.trim(),
+        description: formData.description.trim() || undefined,
+        order: formData.order,
+        icon: formData.icon.trim() || undefined,
+        tags: formData.tags.trim() ? formData.tags.split(',').map(tag => tag.trim()).filter(Boolean) : undefined,
+        path: `${formData.slug.trim()}.md`
       };
 
-      if (isEditing && selectedContent) {
-        const { error } = await supabase
-          .from('doc_content')
-          .update(saveData)
-          .eq('id', selectedContent.id);
-
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('doc_content')
-          .insert([saveData]);
-
-        if (error) throw error;
-      }
+      await service.createOrUpdateDoc(docData);
 
       toast({
         title: "Success",
-        description: isEditing ? "Content updated successfully!" : "Content created successfully!",
+        description: isEditing ? "Document updated successfully!" : "Document created successfully!",
       });
 
       resetForm();
-      fetchContent();
+      refetch();
     } catch (error: any) {
       toast({
         title: "Error",
@@ -196,38 +203,34 @@ const AdminPage = () => {
     }
   };
 
-  const handleEdit = (item: DocContent) => {
-    setSelectedContent(item);
+  const handleEditDoc = (doc: DocContent) => {
+    setSelectedDoc(doc);
     setFormData({
-      slug: item.slug,
-      title: item.title,
-      content: item.content,
-      description: item.description || '',
-      order_index: item.order_index || 0,
-      icon: item.icon || '',
-      tags: item.tags ? item.tags.join(', ') : '',
-      is_published: item.is_published ?? true
+      slug: doc.slug,
+      title: doc.title,
+      content: doc.content,
+      description: doc.description || '',
+      order: doc.order || 0,
+      icon: doc.icon || '',
+      tags: doc.tags ? doc.tags.join(', ') : ''
     });
     setIsEditing(true);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this content?')) return;
+  const handleDeleteDoc = async (doc: DocContent) => {
+    if (!service || !doc.path) return;
+
+    if (!confirm(`Are you sure you want to delete "${doc.title}"?`)) return;
 
     try {
-      const { error } = await supabase
-        .from('doc_content')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-
+      await service.deleteDoc(doc.path.replace(`${config?.basePath}/`, ''));
+      
       toast({
         title: "Success",
-        description: "Content deleted successfully!",
+        description: "Document deleted successfully!",
       });
 
-      fetchContent();
+      refetch();
     } catch (error: any) {
       toast({
         title: "Error",
@@ -243,12 +246,11 @@ const AdminPage = () => {
       title: '',
       content: '',
       description: '',
-      order_index: 0,
+      order: 0,
       icon: '',
-      tags: '',
-      is_published: true
+      tags: ''
     });
-    setSelectedContent(null);
+    setSelectedDoc(null);
     setIsEditing(false);
   };
 
@@ -278,17 +280,107 @@ const AdminPage = () => {
           </div>
         </div>
 
-        <Tabs defaultValue="content" className="w-full">
+        <Tabs defaultValue="github" className="w-full">
           <TabsList>
-            <TabsTrigger value="content">Content Management</TabsTrigger>
+            <TabsTrigger value="github">GitHub Configuration</TabsTrigger>
+            <TabsTrigger value="content" disabled={!isConfigured}>
+              Content Management
+            </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="github" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Github className="w-5 h-5" />
+                  GitHub Integration
+                </CardTitle>
+                <CardDescription>
+                  Configure GitHub repository for documentation storage
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {!isConfigured ? (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Repository</label>
+                      <Input
+                        value={gitHubConfig.repository}
+                        onChange={(e) => setGitHubConfig({ ...gitHubConfig, repository: e.target.value })}
+                        placeholder="username/repository-name"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Branch</label>
+                      <Input
+                        value={gitHubConfig.branch}
+                        onChange={(e) => setGitHubConfig({ ...gitHubConfig, branch: e.target.value })}
+                        placeholder="main"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Personal Access Token</label>
+                      <Input
+                        type="password"
+                        value={gitHubConfig.token}
+                        onChange={(e) => setGitHubConfig({ ...gitHubConfig, token: e.target.value })}
+                        placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Docs Folder Path</label>
+                      <Input
+                        value={gitHubConfig.basePath}
+                        onChange={(e) => setGitHubConfig({ ...gitHubConfig, basePath: e.target.value })}
+                        placeholder="docs"
+                      />
+                    </div>
+                    
+                    <Button onClick={handleSaveGitHubConfig} className="w-full">
+                      <Settings className="w-4 h-4 mr-2" />
+                      Save Configuration
+                    </Button>
+                  </>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="text-sm font-medium text-green-800">GitHub Configured</h3>
+                          <p className="text-sm text-green-700">
+                            Repository: {config?.repository} (branch: {config?.branch})
+                          </p>
+                          <p className="text-sm text-green-700">
+                            Docs Path: /{config?.basePath}
+                          </p>
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={clearConfig}
+                        >
+                          Reconfigure
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           <TabsContent value="content" className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Form */}
+              {/* Document Form */}
               <Card>
                 <CardHeader>
-                  <CardTitle>{isEditing ? 'Edit Content' : 'Create New Content'}</CardTitle>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="w-5 h-5" />
+                    {isEditing ? 'Edit Document' : 'Create New Document'}
+                  </CardTitle>
                   <CardDescription>
                     {isEditing ? 'Update existing documentation' : 'Add new documentation content'}
                   </CardDescription>
@@ -318,7 +410,7 @@ const AdminPage = () => {
                       value={formData.content}
                       onChange={(e) => setFormData({ ...formData, content: e.target.value })}
                       placeholder="# Getting Started..."
-                      className="min-h-[200px]"
+                      className="min-h-[200px] font-mono"
                     />
                   </div>
                   
@@ -333,11 +425,11 @@ const AdminPage = () => {
                   
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium mb-1">Order Index</label>
+                      <label className="block text-sm font-medium mb-1">Order</label>
                       <Input
                         type="number"
-                        value={formData.order_index}
-                        onChange={(e) => setFormData({ ...formData, order_index: parseInt(e.target.value) || 0 })}
+                        value={formData.order}
+                        onChange={(e) => setFormData({ ...formData, order: parseInt(e.target.value) || 0 })}
                       />
                     </div>
                     
@@ -360,18 +452,8 @@ const AdminPage = () => {
                     />
                   </div>
                   
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id="is_published"
-                      checked={formData.is_published}
-                      onChange={(e) => setFormData({ ...formData, is_published: e.target.checked })}
-                    />
-                    <label htmlFor="is_published" className="text-sm font-medium">Published</label>
-                  </div>
-                  
                   <div className="flex gap-2">
-                    <Button onClick={handleSave} className="flex-1">
+                    <Button onClick={handleSaveDoc} className="flex-1">
                       {isEditing ? 'Update' : 'Create'}
                     </Button>
                     {isEditing && (
@@ -383,34 +465,62 @@ const AdminPage = () => {
                 </CardContent>
               </Card>
 
-              {/* Content List */}
+              {/* Documents List */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Existing Content</CardTitle>
-                  <CardDescription>Manage your documentation content</CardDescription>
+                  <CardTitle>GitHub Documents</CardTitle>
+                  <CardDescription>Manage your documentation stored in GitHub</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-2 max-h-[600px] overflow-y-auto">
-                    {content.map((item) => (
-                      <div key={item.id} className="flex items-center justify-between p-3 border rounded">
-                        <div className="flex-1">
-                          <div className="font-medium">{item.title}</div>
-                          <div className="text-sm text-gray-500">/{item.slug}</div>
-                          <div className="text-xs text-gray-400">
-                            Order: {item.order_index} • {item.is_published ? 'Published' : 'Draft'}
+                  {docsLoading ? (
+                    <div className="text-center py-4">Loading documents...</div>
+                  ) : docsError ? (
+                    <div className="text-center py-4 text-red-500">Error: {docsError}</div>
+                  ) : (
+                    <div className="space-y-2 max-h-[600px] overflow-y-auto">
+                      {docs.length === 0 ? (
+                        <div className="text-center py-8 text-gray-500">
+                          <FileText className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                          <p>No documents found</p>
+                          <p className="text-sm">Create your first document above</p>
+                        </div>
+                      ) : (
+                        docs.map((doc) => (
+                          <div key={doc.slug} className="flex items-center justify-between p-3 border rounded">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                {doc.icon && <span>{doc.icon}</span>}
+                                <div className="font-medium">{doc.title}</div>
+                              </div>
+                              <div className="text-sm text-gray-500">/{doc.slug}</div>
+                              <div className="text-xs text-gray-400">
+                                Order: {doc.order || 0}
+                                {doc.tags && doc.tags.length > 0 && (
+                                  <span> • Tags: {doc.tags.join(', ')}</span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                onClick={() => handleEditDoc(doc)}
+                              >
+                                Edit
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="destructive" 
+                                onClick={() => handleDeleteDoc(doc)}
+                              >
+                                Delete
+                              </Button>
+                            </div>
                           </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button size="sm" variant="outline" onClick={() => handleEdit(item)}>
-                            Edit
-                          </Button>
-                          <Button size="sm" variant="destructive" onClick={() => handleDelete(item.id)}>
-                            Delete
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                        ))
+                      )}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>

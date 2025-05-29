@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
@@ -7,11 +8,12 @@ import Layout from "@/components/layout";
 import DocNotFound from "@/components/doc-not-found";
 import DocError from "@/components/doc-error";
 import { routeConfig } from "@/config/routes";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Edit } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
+import { useGitHubDocs } from "@/hooks/useGitHubDocs";
+import { DocContent } from "@/services/githubApi";
 
 interface DocMeta {
   title: string;
@@ -36,6 +38,7 @@ const DocsPage = () => {
 
   const { user, isAdmin, isEditor } = useAuth();
   const navigate = useNavigate();
+  const { service, isConfigured } = useGitHubDocs();
 
   useEffect(() => {
     const loadDoc = async () => {
@@ -43,29 +46,38 @@ const DocsPage = () => {
       setError(null);
       setNotFound(false);
 
-      try {
-        // Try to fetch from database first
-        const { data: doc, error: dbError } = await supabase
-          .from('doc_content')
-          .select('*')
-          .eq('slug', slug)
-          .eq('is_published', true)
-          .single();
+      // If GitHub is configured, try to fetch from GitHub
+      if (isConfigured && service) {
+        try {
+          const doc = await service.getDocBySlug(slug);
+          
+          if (doc) {
+            setDocContent(doc.content);
+            setDocMeta({
+              title: doc.title,
+              description: doc.description || undefined,
+              order: doc.order || 0,
+              icon: doc.icon || undefined,
+              tags: doc.tags || undefined,
+            });
+          } else {
+            setNotFound(true);
+          }
+          setLoading(false);
+          return;
+        } catch (err) {
+          console.error('Error loading doc from GitHub:', err);
+          setError("Failed to load documentation from GitHub");
+          setLoading(false);
+          return;
+        }
+      }
 
-        if (doc && !dbError) {
-          setDocContent(doc.content);
-          setDocMeta({
-            title: doc.title,
-            description: doc.description || undefined,
-            order: doc.order_index || 0,
-            icon: doc.icon || undefined,
-            tags: doc.tags || undefined,
-          });
-        } else {
-          // Fallback to mock data for backward compatibility
-          const mockDocs: Record<string, { content: string; meta: DocMeta }> = {
-            "getting-started": {
-              content: `# Getting Started
+      // Fallback to mock data when GitHub is not configured
+      try {
+        const mockDocs: Record<string, { content: string; meta: DocMeta }> = {
+          "getting-started": {
+            content: `# Getting Started
 
 Welcome to MyProject! This guide will help you get up and running quickly.
 
@@ -104,17 +116,19 @@ project.init().then(() => {
 - Read the [API Reference](${routeConfig.buildPath('api-reference')})
 - Check out [Examples](${routeConfig.buildPath('examples')})
 - Learn about [Advanced Topics](${routeConfig.buildPath('advanced')})
-              `,
-              meta: {
-                title: "Getting Started",
-                description: "Learn how to get started with MyProject",
-                order: 1,
-                icon: "🚀",
-                tags: ["basics", "setup"]
-              }
-            },
-            "getting-started/installation": {
-              content: `# Installation
+
+> **Note**: This documentation is currently using fallback content. Configure GitHub integration in the admin panel to load docs from your repository.
+            `,
+            meta: {
+              title: "Getting Started",
+              description: "Learn how to get started with MyProject",
+              order: 1,
+              icon: "🚀",
+              tags: ["basics", "setup"]
+            }
+          },
+          "getting-started/installation": {
+            content: `# Installation
 
 Install MyProject using your preferred package manager.
 
@@ -140,16 +154,18 @@ pnpm add myproject
 
 - Node.js 16 or higher
 - npm 7 or higher
-              `,
-              meta: {
-                title: "Installation",
-                description: "How to install MyProject",
-                order: 1,
-                tags: ["installation", "setup"]
-              }
-            },
-            "api-reference": {
-              content: `# API Reference
+
+> **Note**: This documentation is currently using fallback content. Configure GitHub integration in the admin panel to load docs from your repository.
+            `,
+            meta: {
+              title: "Installation",
+              description: "How to install MyProject",
+              order: 1,
+              tags: ["installation", "setup"]
+            }
+          },
+          "api-reference": {
+            content: `# API Reference
 
 Complete reference for MyProject API.
 
@@ -201,28 +217,29 @@ Handle errors gracefully in your application.
 ### Rate Limiting
 
 Understand API rate limits and best practices.
-              `,
-              meta: {
-                title: "API Reference",
-                description: "Complete API documentation",
-                order: 2,
-                icon: "📚",
-                tags: ["api", "reference"]
-              }
+
+> **Note**: This documentation is currently using fallback content. Configure GitHub integration in the admin panel to load docs from your repository.
+            `,
+            meta: {
+              title: "API Reference",
+              description: "Complete API documentation",
+              order: 2,
+              icon: "📚",
+              tags: ["api", "reference"]
             }
-          };
-
-          const mockDoc = mockDocs[slug];
-          if (!mockDoc) {
-            setNotFound(true);
-            return;
           }
+        };
 
-          setDocContent(mockDoc.content);
-          setDocMeta(mockDoc.meta);
+        const mockDoc = mockDocs[slug];
+        if (!mockDoc) {
+          setNotFound(true);
+          return;
         }
+
+        setDocContent(mockDoc.content);
+        setDocMeta(mockDoc.meta);
       } catch (err) {
-        console.error('Error loading doc:', err);
+        console.error('Error loading mock doc:', err);
         setError("Failed to load documentation");
       } finally {
         setLoading(false);
@@ -230,7 +247,7 @@ Understand API rate limits and best practices.
     };
 
     loadDoc();
-  }, [slug]);
+  }, [slug, service, isConfigured]);
 
   if (loading) {
     return (
@@ -255,6 +272,27 @@ Understand API rate limits and best practices.
   return (
     <Layout rightSidebar={<TableOfContentsComponent content={docContent} />}>
       <article className="prose prose-slate dark:prose-invert max-w-none">
+        {/* Configuration Notice for Admins */}
+        {!isConfigured && (isAdmin || isEditor) && user && (
+          <div className="not-prose mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-medium text-yellow-800">GitHub Not Configured</h3>
+                <p className="text-sm text-yellow-700">
+                  Configure GitHub integration in the admin panel to load docs from your repository.
+                </p>
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => navigate('/admin')}
+              >
+                Configure
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Edit Button for Admins/Editors */}
         {(isAdmin || isEditor) && user && (
           <div className="not-prose mb-4 flex justify-end">

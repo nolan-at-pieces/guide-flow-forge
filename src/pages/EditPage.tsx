@@ -2,31 +2,21 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, Plus, FileText } from 'lucide-react';
 import MarkdownEditor from '@/components/editor/MarkdownEditor';
 import GitHubIntegration from '@/components/editor/GitHubIntegration';
-
-interface DocContent {
-  id: string;
-  slug: string;
-  title: string;
-  content: string;
-  description?: string;
-  tags?: string[];
-  order_index?: number;
-  icon?: string;
-  is_published?: boolean;
-}
+import { useGitHubDocs } from '@/hooks/useGitHubDocs';
+import { DocContent } from '@/services/githubApi';
 
 const EditPage = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
   const { user, isAdmin, isEditor } = useAuth();
   const { toast } = useToast();
+  const { service, isConfigured } = useGitHubDocs();
   
   const [docContent, setDocContent] = useState<DocContent | null>(null);
   const [loading, setLoading] = useState(true);
@@ -43,53 +33,55 @@ const EditPage = () => {
       return;
     }
 
+    if (!isConfigured) {
+      toast({
+        title: "GitHub Not Configured",
+        description: "Please configure GitHub integration in the admin panel first.",
+        variant: "destructive",
+      });
+      navigate('/admin');
+      return;
+    }
+
     if (slug === 'new') {
       setIsNewPage(true);
       setDocContent({
-        id: '',
-        slug: '',
         title: '',
+        slug: '',
         content: '# New Page\n\nStart writing your content here...',
         description: '',
         tags: [],
-        order_index: 0,
+        order: 0,
         icon: '',
-        is_published: false
+        path: ''
       });
       setLoading(false);
-    } else if (slug) {
+    } else if (slug && service) {
       fetchDocContent();
     }
-  }, [slug, user, isAdmin, isEditor, navigate]);
+  }, [slug, user, isAdmin, isEditor, navigate, service, isConfigured]);
 
   const fetchDocContent = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('doc_content')
-        .select('*')
-        .eq('slug', slug)
-        .single();
+    if (!service || !slug) return;
 
-      if (error) {
-        if (error.code === 'PGRST116') {
-          // Document not found, create new one
-          setIsNewPage(true);
-          setDocContent({
-            id: '',
-            slug: slug || '',
-            title: '',
-            content: '# New Page\n\nStart writing your content here...',
-            description: '',
-            tags: [],
-            order_index: 0,
-            icon: '',
-            is_published: false
-          });
-        } else {
-          throw error;
-        }
+    try {
+      const doc = await service.getDocBySlug(slug);
+
+      if (doc) {
+        setDocContent(doc);
       } else {
-        setDocContent(data);
+        // Document not found, create new one
+        setIsNewPage(true);
+        setDocContent({
+          title: '',
+          slug: slug,
+          content: '# New Page\n\nStart writing your content here...',
+          description: '',
+          tags: [],
+          order: 0,
+          icon: '',
+          path: `${slug}.md`
+        });
       }
     } catch (error: any) {
       toast({
@@ -109,42 +101,33 @@ const EditPage = () => {
     description?: string;
     tags?: string[];
   }) => {
+    if (!service) {
+      toast({
+        title: "Error",
+        description: "GitHub service not available",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
-      const saveData = {
+      const saveData: DocContent = {
         ...data,
-        order_index: docContent?.order_index || 0,
-        icon: docContent?.icon || null,
-        is_published: docContent?.is_published ?? true,
-        updated_by: user?.id,
-        ...(isNewPage ? { created_by: user?.id } : {})
+        order: docContent?.order || 0,
+        icon: docContent?.icon || undefined,
+        path: `${data.slug}.md`
       };
 
+      await service.createOrUpdateDoc(saveData);
+      
+      toast({
+        title: "Success",
+        description: isNewPage ? "Page created successfully!" : "Page updated successfully!",
+      });
+      
       if (isNewPage) {
-        const { error } = await supabase
-          .from('doc_content')
-          .insert([saveData]);
-
-        if (error) throw error;
-        
-        toast({
-          title: "Success",
-          description: "Page created successfully!",
-        });
-        
         navigate(`/edit/${data.slug}`);
         setIsNewPage(false);
-      } else {
-        const { error } = await supabase
-          .from('doc_content')
-          .update(saveData)
-          .eq('id', docContent?.id);
-
-        if (error) throw error;
-        
-        toast({
-          title: "Success",
-          description: "Page updated successfully!",
-        });
       }
 
       // Update local state
@@ -159,16 +142,10 @@ const EditPage = () => {
   };
 
   const handlePublishToGithub = async (config: any) => {
-    // In a real implementation, this would use GitHub API
-    // For now, we'll just simulate the process
-    return new Promise<void>((resolve, reject) => {
-      setTimeout(() => {
-        if (Math.random() > 0.1) { // 90% success rate for demo
-          resolve();
-        } else {
-          reject(new Error('GitHub API error'));
-        }
-      }, 2000);
+    // This is already handled by the save function since we're using GitHub directly
+    toast({
+      title: "Success",
+      description: "Changes are automatically saved to GitHub!",
     });
   };
 
@@ -176,6 +153,25 @@ const EditPage = () => {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-pulse">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!isConfigured) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Card>
+          <CardHeader>
+            <CardTitle>GitHub Not Configured</CardTitle>
+            <CardDescription>Configure GitHub integration in the admin panel first.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button onClick={() => navigate('/admin')}>
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Go to Admin Panel
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -221,6 +217,9 @@ const EditPage = () => {
               <Plus className="w-4 h-4 mr-2" />
               New Page
             </Button>
+            <Button variant="outline" onClick={() => navigate('/admin')}>
+              Admin Panel
+            </Button>
           </div>
         </div>
       </div>
@@ -235,14 +234,33 @@ const EditPage = () => {
             initialDescription={docContent.description}
             initialTags={docContent.tags}
             onSave={handleSave}
-            onPublishToGithub={() => handlePublishToGithub({})}
+            onPublishToGithub={handlePublishToGithub}
             isNewPage={isNewPage}
           />
         </div>
         
-        {/* Right Sidebar - GitHub Integration */}
+        {/* Right Sidebar - GitHub Integration Info */}
         <div className="w-80 border-l bg-muted/50 p-4 overflow-auto">
-          <GitHubIntegration onPublish={handlePublishToGithub} />
+          <div className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">GitHub Integration</CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm space-y-2">
+                <p className="text-muted-foreground">
+                  Changes are automatically saved to your GitHub repository when you click Save.
+                </p>
+                <div className="p-3 bg-green-50 border border-green-200 rounded">
+                  <p className="text-green-800 font-medium">✓ Connected to GitHub</p>
+                  <p className="text-green-700 text-xs mt-1">
+                    All changes will be committed directly to your repository.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <GitHubIntegration onPublish={handlePublishToGithub} />
+          </div>
         </div>
       </div>
     </div>
