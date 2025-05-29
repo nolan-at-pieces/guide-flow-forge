@@ -44,32 +44,42 @@ const TableOfContentsComponent = ({ content }: TableOfContentsProps) => {
     // Set up intersection observer to track active section
     const observer = new IntersectionObserver(
       (entries) => {
-        // Filter visible entries and sort by position
-        const visibleEntries = entries
-          .filter(entry => entry.isIntersecting)
-          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+        const scrollTop = window.scrollY;
+        
+        // If we're at the very top of the page, always highlight the first heading
+        if (scrollTop < 50) {
+          const firstHeading = document.querySelector("h1[id], h2[id], h3[id], h4[id], h5[id], h6[id]");
+          if (firstHeading) {
+            setActiveId(firstHeading.id);
+          }
+          return;
+        }
+
+        // Filter visible entries and find the best one to highlight
+        const visibleEntries = entries.filter(entry => entry.isIntersecting);
         
         if (visibleEntries.length > 0) {
-          // Find the entry that's most prominently visible in the viewport
-          const viewportHeight = window.innerHeight;
-          const topThreshold = viewportHeight * 0.3;
+          // Sort by how close they are to the top of the viewport
+          const sortedEntries = visibleEntries.sort((a, b) => {
+            return a.boundingClientRect.top - b.boundingClientRect.top;
+          });
           
-          // Prefer entries in the top portion of the viewport
-          const topEntry = visibleEntries.find(entry => 
-            entry.boundingClientRect.top <= topThreshold && entry.boundingClientRect.top >= -50
+          // Find the entry that's most prominently in the viewport
+          const topEntry = sortedEntries.find(entry => 
+            entry.boundingClientRect.top >= -100 && entry.boundingClientRect.top <= window.innerHeight * 0.4
           );
           
           if (topEntry) {
             setActiveId(topEntry.target.id);
           } else {
-            // Fallback to the first visible entry
-            setActiveId(visibleEntries[0].target.id);
+            // If no entry is in the ideal range, use the first visible one
+            setActiveId(sortedEntries[0].target.id);
           }
         }
       },
       {
-        rootMargin: "-10% 0% -70% 0%",
-        threshold: [0, 0.1, 0.25, 0.5, 0.75, 1]
+        rootMargin: "-10% 0% -60% 0%",
+        threshold: [0, 0.25, 0.5, 0.75, 1]
       }
     );
 
@@ -106,31 +116,30 @@ const TableOfContentsComponent = ({ content }: TableOfContentsProps) => {
       
       headings.forEach((heading) => observer.observe(heading));
       
-      // Set initial active heading based on scroll position with better top handling
+      // Set initial active heading
       if (headings.length > 0) {
         const scrollTop = window.scrollY;
         
-        // If we're at the very top, always highlight the first heading
-        if (scrollTop < 100) {
+        // Always start with first heading when at top
+        if (scrollTop < 50) {
           setActiveId(headings[0].id);
-          return;
-        }
-        
-        const viewportTop = scrollTop + window.innerHeight * 0.3;
-        let closestHeading = headings[0];
-        
-        for (const heading of headings) {
-          const rect = heading.getBoundingClientRect();
-          const elementTop = scrollTop + rect.top;
+        } else {
+          // Find the heading that's currently most visible
+          let bestHeading = headings[0];
+          let bestDistance = Infinity;
           
-          if (elementTop <= viewportTop) {
-            closestHeading = heading;
-          } else {
-            break;
+          for (const heading of headings) {
+            const rect = heading.getBoundingClientRect();
+            const distanceFromTop = Math.abs(rect.top - window.innerHeight * 0.2);
+            
+            if (rect.top <= window.innerHeight * 0.4 && distanceFromTop < bestDistance) {
+              bestDistance = distanceFromTop;
+              bestHeading = heading;
+            }
           }
+          
+          setActiveId(bestHeading.id);
         }
-        
-        setActiveId(closestHeading.id);
       }
     };
 
