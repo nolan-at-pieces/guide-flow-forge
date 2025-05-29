@@ -1,3 +1,4 @@
+
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -16,8 +17,6 @@ import EditPage from "@/pages/EditPage";
 const queryClient = new QueryClient();
 
 const AppContent = () => {
-  const docsPath = routeConfig.urlPrefix ? `/${routeConfig.urlPrefix}/*` : "/*";
-  
   return (
     <Routes>
       <Route path="/" element={
@@ -28,7 +27,7 @@ const AppContent = () => {
       <Route path="/auth" element={<AuthPage />} />
       <Route path="/admin" element={<AdminPage />} />
       <Route path="/edit/:slug" element={<EditPage />} />
-      <Route path={docsPath} element={<DocsPage />} />
+      <Route path="/*" element={<DocsPage />} />
     </Routes>
   );
 };
