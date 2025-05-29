@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+
+import { useState, useEffect, useRef } from "react";
 import { TableOfContents } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -16,6 +17,7 @@ const TableOfContentsComponent = ({ content }: TableOfContentsProps) => {
   const [tocItems, setTocItems] = useState<TOCItem[]>([]);
   const [activeId, setActiveId] = useState<string>("");
   const [scrollProgress, setScrollProgress] = useState(0);
+  const frameRef = useRef<number>();
 
   useEffect(() => {
     // Extract headings from content
@@ -42,58 +44,61 @@ const TableOfContentsComponent = ({ content }: TableOfContentsProps) => {
     // Set up intersection observer to track active section
     const observer = new IntersectionObserver(
       (entries) => {
-        // Find the entry that's most visible
         const visibleEntries = entries.filter(entry => entry.isIntersecting);
+        
         if (visibleEntries.length > 0) {
-          // Get the one closest to the top
-          const topEntry = visibleEntries.reduce((prev, current) => 
-            prev.boundingClientRect.top < current.boundingClientRect.top ? prev : current
-          );
+          // Get the entry with the highest intersection ratio that's in the upper half of viewport
+          const topEntry = visibleEntries
+            .filter(entry => entry.boundingClientRect.top < window.innerHeight / 2)
+            .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0] || visibleEntries[0];
+          
           setActiveId(topEntry.target.id);
         }
       },
       {
-        rootMargin: "-10% 0% -70% 0%",
-        threshold: [0, 0.25, 0.5, 0.75, 1]
+        rootMargin: "-20% 0% -60% 0%",
+        threshold: [0, 0.1, 0.3, 0.5, 0.7, 1]
       }
     );
 
-    // Set up scroll listener for progress tracking with throttling for smoother performance
-    let ticking = false;
+    // Smooth scroll progress tracking
     const handleScroll = () => {
-      if (!ticking) {
-        requestAnimationFrame(() => {
-          const scrollTop = window.scrollY;
-          const docHeight = document.documentElement.scrollHeight - window.innerHeight;
-          const scrollPercent = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
-          setScrollProgress(Math.min(100, Math.max(0, scrollPercent)));
-          ticking = false;
-        });
-        ticking = true;
+      if (frameRef.current) {
+        cancelAnimationFrame(frameRef.current);
       }
+      
+      frameRef.current = requestAnimationFrame(() => {
+        const scrollTop = window.scrollY;
+        const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+        const scrollPercent = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
+        setScrollProgress(Math.min(100, Math.max(0, scrollPercent)));
+      });
     };
 
-    // Observe all headings with slight delay to ensure DOM is ready
+    // Observe all headings with delay to ensure DOM is ready
     const observeHeadings = () => {
       const headings = document.querySelectorAll("h1[id], h2[id], h3[id], h4[id], h5[id], h6[id]");
       headings.forEach((heading) => observer.observe(heading));
       
-      // Set initial active heading
+      // Set initial active heading if none is set
       if (headings.length > 0 && !activeId) {
         setActiveId(headings[0].id);
       }
     };
 
-    const timeoutId = setTimeout(observeHeadings, 100);
+    const timeoutId = setTimeout(observeHeadings, 150);
     
-    // Add scroll listener
-    window.addEventListener('scroll', handleScroll);
+    // Add scroll listener with passive flag for better performance
+    window.addEventListener('scroll', handleScroll, { passive: true });
     handleScroll(); // Initial calculation
 
     return () => {
       clearTimeout(timeoutId);
       observer.disconnect();
       window.removeEventListener('scroll', handleScroll);
+      if (frameRef.current) {
+        cancelAnimationFrame(frameRef.current);
+      }
     };
   }, [tocItems, activeId]);
 
@@ -104,14 +109,7 @@ const TableOfContentsComponent = ({ content }: TableOfContentsProps) => {
     }
   };
 
-  const getActiveIndex = () => {
-    return tocItems.findIndex(item => item.id === activeId);
-  };
-
   if (tocItems.length === 0) return null;
-
-  const activeIndex = getActiveIndex();
-  const progressPercentage = activeIndex >= 0 ? ((activeIndex + 1) / tocItems.length) * 100 : 0;
 
   return (
     <div className="w-64 shrink-0 hidden xl:block">
@@ -127,14 +125,15 @@ const TableOfContentsComponent = ({ content }: TableOfContentsProps) => {
             
             {/* Progress highlight line */}
             <div 
-              className="absolute left-0 top-0 w-0.5 bg-primary transition-all duration-500 ease-out"
+              className="absolute left-0 top-0 w-0.5 bg-primary will-change-transform"
               style={{
-                height: `${scrollProgress}%`
+                height: `${scrollProgress}%`,
+                transition: 'height 150ms cubic-bezier(0.4, 0, 0.2, 1)'
               }}
             ></div>
             
             <div className="space-y-1">
-              {tocItems.map((item, index) => {
+              {tocItems.map((item) => {
                 const isActive = activeId === item.id;
                 
                 return (
@@ -142,9 +141,10 @@ const TableOfContentsComponent = ({ content }: TableOfContentsProps) => {
                     <button
                       onClick={() => scrollToHeading(item.id)}
                       className={cn(
-                        "block w-full text-left text-sm py-2 pl-4 pr-4 rounded-r transition-all duration-300 ease-out hover:bg-muted/50 relative ml-2",
+                        "block w-full text-left text-sm py-2 pl-4 pr-4 rounded-r relative ml-2 will-change-transform",
+                        "transition-all duration-200 ease-out hover:bg-muted/50",
                         isActive 
-                          ? "text-primary font-medium bg-primary/10" 
+                          ? "text-primary font-medium bg-primary/8" 
                           : "text-muted-foreground hover:text-foreground",
                         item.level === 1 && "font-medium",
                         item.level === 2 && "pl-6",
