@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +8,10 @@ import DocNotFound from "@/components/doc-not-found";
 import DocError from "@/components/doc-error";
 import { routeConfig } from "@/config/routes";
 import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Edit } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
 
 interface DocMeta {
   title: string;
@@ -30,6 +33,9 @@ const DocsPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
+
+  const { user, isAdmin, isEditor } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const loadDoc = async () => {
@@ -249,6 +255,20 @@ Understand API rate limits and best practices.
   return (
     <Layout rightSidebar={<TableOfContentsComponent content={docContent} />}>
       <article className="prose prose-slate dark:prose-invert max-w-none">
+        {/* Edit Button for Admins/Editors */}
+        {(isAdmin || isEditor) && user && (
+          <div className="not-prose mb-4 flex justify-end">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => navigate(`/edit/${slug}`)}
+            >
+              <Edit className="w-4 h-4 mr-2" />
+              Edit Page
+            </Button>
+          </div>
+        )}
+        
         {docMeta && (
           <div className="not-prose mb-8">
             <div className="flex items-center gap-2 mb-2">

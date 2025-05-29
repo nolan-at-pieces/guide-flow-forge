@@ -1,4 +1,3 @@
-
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -11,6 +10,8 @@ import DocsPage from "@/pages/DocsPage";
 import AuthPage from "@/pages/AuthPage";
 import AdminPage from "@/pages/AdminPage";
 import { routeConfig } from "@/config/routes";
+import { EditModeProvider } from "@/components/editor/EditModeProvider";
+import EditPage from "@/pages/EditPage";
 
 const queryClient = new QueryClient();
 
@@ -26,6 +27,7 @@ const AppContent = () => {
       } />
       <Route path="/auth" element={<AuthPage />} />
       <Route path="/admin" element={<AdminPage />} />
+      <Route path="/edit/:slug" element={<EditPage />} />
       <Route path={docsPath} element={<DocsPage />} />
     </Routes>
   );
@@ -38,7 +40,9 @@ const App = () => (
         <Toaster />
         <BrowserRouter>
           <AuthProvider>
-            <AppContent />
+            <EditModeProvider>
+              <AppContent />
+            </EditModeProvider>
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
