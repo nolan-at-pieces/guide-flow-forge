@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
-import { Save, Eye, EyeOff, Github, Plus, Settings } from 'lucide-react';
+import { Save, Eye, EyeOff, Github, Plus, Settings, ArrowLeft } from 'lucide-react';
 import SlashCommandMenu from './SlashCommandMenu';
 import MDXRenderer from '@/components/mdx-renderer';
 
@@ -24,6 +24,7 @@ interface MarkdownEditorProps {
     tags?: string[];
   }) => void;
   onPublishToGithub?: () => void;
+  onBack?: () => void;
   isNewPage?: boolean;
 }
 
@@ -35,6 +36,7 @@ const MarkdownEditor = ({
   initialTags = [],
   onSave,
   onPublishToGithub,
+  onBack,
   isNewPage = false
 }: MarkdownEditorProps) => {
   const { toast } = useToast();
@@ -126,6 +128,12 @@ const MarkdownEditor = ({
       {/* Header Controls */}
       <div className="flex items-center justify-between p-4 border-b bg-background">
         <div className="flex items-center gap-4">
+          {onBack && (
+            <Button onClick={onBack} variant="ghost" size="sm">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back
+            </Button>
+          )}
           <Button onClick={() => setShowPreview(!showPreview)} variant="outline" size="sm">
             {showPreview ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             {showPreview ? 'Edit' : 'Preview'}
@@ -187,23 +195,82 @@ const MarkdownEditor = ({
       {/* Editor/Preview Area */}
       <div className="flex-1 flex">
         {!showPreview ? (
-          <div className="w-full relative">
-            <Textarea
-              ref={textareaRef}
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Start typing... Use / for commands"
-              className="w-full h-full resize-none border-0 focus:ring-0 font-mono text-sm leading-relaxed"
-              style={{ minHeight: 'calc(100vh - 300px)' }}
-            />
-            {showSlashMenu && (
-              <SlashCommandMenu
-                position={slashMenuPosition}
-                onSelect={insertAtCursor}
-                onClose={() => setShowSlashMenu(false)}
+          <div className="w-full relative flex">
+            {/* Main Editor */}
+            <div className="flex-1">
+              <Textarea
+                ref={textareaRef}
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Start typing... Use / for commands"
+                className="w-full h-full resize-none border-0 focus:ring-0 font-mono text-sm leading-relaxed"
+                style={{ minHeight: 'calc(100vh - 300px)' }}
               />
-            )}
+              {showSlashMenu && (
+                <SlashCommandMenu
+                  position={slashMenuPosition}
+                  onSelect={insertAtCursor}
+                  onClose={() => setShowSlashMenu(false)}
+                />
+              )}
+            </div>
+            
+            {/* Markdown Cheatsheet Sidebar */}
+            <div className="w-64 border-l bg-muted/30 p-4 overflow-auto">
+              <h3 className="font-semibold text-sm mb-3">Markdown Cheatsheet</h3>
+              <div className="space-y-3 text-xs">
+                <div>
+                  <div className="font-medium mb-1">Headers</div>
+                  <div className="font-mono text-muted-foreground">
+                    # H1<br />
+                    ## H2<br />
+                    ### H3
+                  </div>
+                </div>
+                <div>
+                  <div className="font-medium mb-1">Text</div>
+                  <div className="font-mono text-muted-foreground">
+                    **bold**<br />
+                    *italic*<br />
+                    `code`
+                  </div>
+                </div>
+                <div>
+                  <div className="font-medium mb-1">Lists</div>
+                  <div className="font-mono text-muted-foreground">
+                    - Item<br />
+                    1. Numbered
+                  </div>
+                </div>
+                <div>
+                  <div className="font-medium mb-1">Links</div>
+                  <div className="font-mono text-muted-foreground">
+                    [text](url)
+                  </div>
+                </div>
+                <div>
+                  <div className="font-medium mb-1">Code Block</div>
+                  <div className="font-mono text-muted-foreground">
+                    ```language<br />
+                    code<br />
+                    ```
+                  </div>
+                </div>
+                <div>
+                  <div className="font-medium mb-1">Quote</div>
+                  <div className="font-mono text-muted-foreground">
+                    {'> quote'}
+                  </div>
+                </div>
+                <div>
+                  <div className="font-medium mb-1">Slash Commands</div>
+                  <div className="text-muted-foreground">
+                    Type / for quick insert
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         ) : (
           <div className="w-full p-6 overflow-auto">

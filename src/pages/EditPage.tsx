@@ -1,10 +1,11 @@
+
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Plus, FileText } from 'lucide-react';
+import { ArrowLeft, Plus, FileText, Home } from 'lucide-react';
 import MarkdownEditor from '@/components/editor/MarkdownEditor';
 import GitHubIntegration from '@/components/editor/GitHubIntegration';
 import { useGitHubDocs } from '@/hooks/useGitHubDocs';
@@ -148,6 +149,10 @@ const EditPage = () => {
     });
   };
 
+  const handleBack = () => {
+    navigate('/');
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -165,10 +170,16 @@ const EditPage = () => {
             <CardDescription>Configure GitHub integration in the admin panel first.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button onClick={() => navigate('/admin')}>
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Go to Admin Panel
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={() => navigate('/admin')}>
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Go to Admin Panel
+              </Button>
+              <Button variant="outline" onClick={() => navigate('/')}>
+                <Home className="w-4 h-4 mr-2" />
+                Back to Docs
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -184,10 +195,16 @@ const EditPage = () => {
             <CardDescription>The page you're looking for doesn't exist.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button onClick={() => navigate('/')}>
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Go Home
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={() => navigate('/')}>
+                <Home className="w-4 h-4 mr-2" />
+                Go Home
+              </Button>
+              <Button variant="outline" onClick={() => navigate('/edit/new')}>
+                <Plus className="w-4 h-4 mr-2" />
+                Create New Page
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -199,11 +216,6 @@ const EditPage = () => {
       {/* Top Navigation */}
       <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="flex h-14 items-center px-4">
-          <Button variant="ghost" onClick={() => navigate('/')} className="mr-4">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Docs
-          </Button>
-          
           <div className="flex items-center gap-2">
             <FileText className="w-4 h-4" />
             <span className="font-medium">
@@ -235,6 +247,7 @@ const EditPage = () => {
               initialTags={docContent.tags}
               onSave={handleSave}
               onPublishToGithub={handlePublishToGithub}
+              onBack={handleBack}
               isNewPage={isNewPage}
             />
           )}
