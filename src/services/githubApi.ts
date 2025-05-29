@@ -1,4 +1,3 @@
-
 interface GitHubConfig {
   repository: string;
   branch: string;
@@ -76,6 +75,7 @@ export class GitHubDocsService {
     const match = content.match(frontmatterRegex);
     
     if (!match) {
+      // No frontmatter found, return content as-is with default metadata
       return {
         metadata: { title: 'Untitled', slug: '' },
         content: content
@@ -83,7 +83,7 @@ export class GitHubDocsService {
     }
 
     const frontmatter = match[1];
-    const markdownContent = match[2];
+    const markdownContent = match[2]; // This is the content WITHOUT frontmatter
     
     const metadata: any = {};
     
@@ -153,9 +153,11 @@ export class GitHubDocsService {
       metadata[currentKey] = arrayItems;
     }
 
+    console.log('Parsed frontmatter:', { metadata, contentLength: markdownContent.length });
+
     return {
       metadata: metadata as DocMetadata,
-      content: markdownContent
+      content: markdownContent // Return ONLY the markdown content without frontmatter
     };
   }
 

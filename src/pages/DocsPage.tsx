@@ -51,13 +51,14 @@ const DocsPage = () => {
         const doc = docs.find(d => d.slug === slug);
         
         if (doc) {
+          console.log('Loading doc from cache:', doc);
           setDocContent(doc.content);
           setDocMeta({
             title: doc.title,
-            description: doc.description || undefined,
+            description: doc.description,
             order: doc.order || 0,
-            icon: doc.icon || undefined,
-            tags: doc.tags || undefined,
+            icon: doc.icon,
+            tags: doc.tags,
           });
         } else {
           setNotFound(true);
@@ -72,13 +73,14 @@ const DocsPage = () => {
           const doc = await service.getDocBySlug(slug);
           
           if (doc) {
+            console.log('Loading doc directly from GitHub:', doc);
             setDocContent(doc.content);
             setDocMeta({
               title: doc.title,
-              description: doc.description || undefined,
+              description: doc.description,
               order: doc.order || 0,
-              icon: doc.icon || undefined,
-              tags: doc.tags || undefined,
+              icon: doc.icon,
+              tags: doc.tags,
             });
           } else {
             setNotFound(true);
