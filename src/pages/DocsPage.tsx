@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +12,7 @@ import { Edit } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { useGitHubDocs } from "@/hooks/useGitHubDocs";
+import { githubDocsCache } from "@/services/githubDocsCache";
 
 interface DocMeta {
   title: string;
@@ -21,167 +21,6 @@ interface DocMeta {
   icon?: string;
   tags?: string[];
 }
-
-// Public GitHub repository configuration - used for ALL users
-const PUBLIC_GITHUB_CONFIG = {
-  repository: "nolan-at-pieces/guide-flow-forge",
-  branch: "main",
-  basePath: "sample-docs"
-};
-
-// Function to fetch from public GitHub repo without authentication
-const fetchPublicGitHubContent = async (path: string): Promise<string> => {
-  const url = `https://api.github.com/repos/${PUBLIC_GITHUB_CONFIG.repository}/contents/${PUBLIC_GITHUB_CONFIG.basePath}/${path}?ref=${PUBLIC_GITHUB_CONFIG.branch}`;
-  
-  console.log('Fetching from URL:', url);
-  
-  const response = await fetch(url, {
-    headers: {
-      'Accept': 'application/vnd.github.v3+json',
-      'User-Agent': 'DocSite/1.0'
-    }
-  });
-
-  console.log('Response status:', response.status, response.statusText);
-
-  if (!response.ok) {
-    if (response.status === 404) {
-      throw new Error(`Document not found: ${path}`);
-    }
-    const errorText = await response.text();
-    console.log('Error response:', errorText);
-    throw new Error(`Failed to fetch ${path}: ${response.status} ${response.statusText}`);
-  }
-
-  const data = await response.json();
-  
-  if (data.encoding === 'base64') {
-    return atob(data.content.replace(/\s/g, ''));
-  }
-  
-  return data.content;
-};
-
-// Enhanced frontmatter parsing that properly removes frontmatter from content
-const parseFrontmatter = (content: string) => {
-  // Normalize line endings
-  const normalizedContent = content.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-  
-  // Check if content starts with frontmatter delimiter
-  if (!normalizedContent.startsWith('---\n')) {
-    return {
-      metadata: { title: 'Untitled', order: 0 },
-      content: normalizedContent.trim()
-    };
-  }
-  
-  // Find the closing frontmatter delimiter
-  const lines = normalizedContent.split('\n');
-  let frontmatterEndIndex = -1;
-  
-  // Start from line 1 (skip the opening ---)
-  for (let i = 1; i < lines.length; i++) {
-    if (lines[i].trim() === '---') {
-      frontmatterEndIndex = i;
-      break;
-    }
-  }
-  
-  if (frontmatterEndIndex === -1) {
-    // No closing frontmatter found, treat as regular content
-    return {
-      metadata: { title: 'Untitled', order: 0 },
-      content: normalizedContent.trim()
-    };
-  }
-  
-  // Extract frontmatter section (between the --- markers)
-  const frontmatterLines = lines.slice(1, frontmatterEndIndex);
-  
-  // Extract content after frontmatter (skip the closing --- and any empty lines)
-  let contentStartIndex = frontmatterEndIndex + 1;
-  while (contentStartIndex < lines.length && lines[contentStartIndex].trim() === '') {
-    contentStartIndex++;
-  }
-  const contentLines = lines.slice(contentStartIndex);
-  const cleanContent = contentLines.join('\n').trim();
-  
-  // Parse the frontmatter
-  const metadata: any = { order: 0 };
-  let currentKey = '';
-  let inArray = false;
-  let arrayItems: string[] = [];
-  
-  for (const line of frontmatterLines) {
-    const trimmedLine = line.trim();
-    if (!trimmedLine) continue;
-    
-    // Handle array continuation
-    if (inArray && trimmedLine.startsWith('- ')) {
-      const item = trimmedLine.substring(2).trim();
-      arrayItems.push(item.replace(/^["']|["']$/g, ''));
-      continue;
-    } else if (inArray && !trimmedLine.startsWith('- ')) {
-      // End of array
-      metadata[currentKey] = arrayItems;
-      inArray = false;
-      arrayItems = [];
-    }
-    
-    // Handle key-value pairs
-    const colonIndex = trimmedLine.indexOf(':');
-    if (colonIndex > 0) {
-      const key = trimmedLine.substring(0, colonIndex).trim();
-      let value = trimmedLine.substring(colonIndex + 1).trim();
-      
-      if (!value) {
-        // This might be the start of an array
-        currentKey = key;
-        inArray = true;
-        arrayItems = [];
-        continue;
-      }
-      
-      // Handle inline arrays [item1, item2]
-      if (value.startsWith('[') && value.endsWith(']')) {
-        const arrayContent = value.slice(1, -1);
-        if (arrayContent.trim()) {
-          metadata[key] = arrayContent.split(',').map(item => 
-            item.trim().replace(/^["']|["']$/g, '')
-          );
-        } else {
-          metadata[key] = [];
-        }
-        continue;
-      }
-      
-      // Remove quotes and handle special values
-      value = value.replace(/^["']|["']$/g, '');
-      
-      if (key === 'order') {
-        metadata[key] = parseInt(value) || 0;
-      } else {
-        metadata[key] = value;
-      }
-    }
-  }
-  
-  // Handle any remaining array
-  if (inArray && arrayItems.length > 0) {
-    metadata[currentKey] = arrayItems;
-  }
-  
-  console.log('Frontmatter parsing result:');
-  console.log('Original content length:', normalizedContent.length);
-  console.log('Clean content length:', cleanContent.length);
-  console.log('Metadata:', metadata);
-  console.log('Clean content preview:', cleanContent.substring(0, 100));
-  
-  return {
-    metadata,
-    content: cleanContent
-  };
-};
 
 const DocsPage = () => {
   const params = useParams();
@@ -206,46 +45,27 @@ const DocsPage = () => {
 
       console.log('Loading document for slug:', slug);
 
-      // ALWAYS try to load from public GitHub repo first (for ALL users)
       try {
-        const filePath = slug.endsWith('.md') ? slug : `${slug}.md`;
-        console.log('Attempting to fetch file:', filePath);
+        // Try to load from cache first
+        const cachedDoc = await githubDocsCache.getDoc(slug);
         
-        const content = await fetchPublicGitHubContent(filePath);
-        
-        const { metadata, content: markdownContent } = parseFrontmatter(content);
-        
-        console.log('Successfully loaded from public GitHub:', slug);
-        console.log('Parsed metadata:', metadata);
-        console.log('Clean content (no frontmatter):', markdownContent.substring(0, 200));
-        
-        setDocContent(markdownContent);
-        setDocMeta({
-          title: metadata.title || slug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-          description: metadata.description,
-          order: metadata.order || 0,
-          icon: metadata.icon,
-          tags: metadata.tags
-        });
-        setLoading(false);
-        return;
-      } catch (err) {
-        console.log('Failed to load from public GitHub:', err);
-        
-        // Only set notFound if it's specifically a 404 error
-        if (err instanceof Error && err.message.includes('Document not found')) {
-          console.log('Document not found, setting notFound to true');
-          setNotFound(true);
+        if (cachedDoc) {
+          console.log('Successfully loaded from cache/GitHub:', slug);
+          setDocContent(cachedDoc.content);
+          setDocMeta({
+            title: cachedDoc.title,
+            description: cachedDoc.description,
+            order: cachedDoc.order,
+            icon: cachedDoc.icon,
+            tags: cachedDoc.tags
+          });
           setLoading(false);
           return;
         }
-        
-        // For other errors, continue to fallback
-        console.log('GitHub error, falling back to mock data');
-      }
 
-      // Fallback to mock data when GitHub is not available
-      try {
+        // If not found in cache/GitHub, fall back to mock data
+        console.log('Document not found in GitHub, using mock data for:', slug);
+        
         const mockDocs: Record<string, {
           content: string;
           meta: DocMeta;
@@ -290,8 +110,6 @@ project.init().then(() => {
 - Read the [API Reference](${routeConfig.buildPath('api-reference')})
 - Check out [Examples](${routeConfig.buildPath('examples')})
 - Learn about [Advanced Topics](${routeConfig.buildPath('advanced')})
-
-> **Note**: This documentation is currently using fallback content. The public GitHub repository may be temporarily unavailable.
             `,
             meta: {
               title: "Getting Started",
@@ -328,8 +146,6 @@ pnpm add myproject
 
 - Node.js 16 or higher
 - npm 7 or higher
-
-> **Note**: This documentation is currently using fallback content. The public GitHub repository may be temporarily unavailable.
             `,
             meta: {
               title: "Installation",
@@ -391,8 +207,6 @@ Handle errors gracefully in your application.
 ### Rate Limiting
 
 Understand API rate limits and best practices.
-
-> **Note**: This documentation is currently using fallback content. The public GitHub repository may be temporarily unavailable.
             `,
             meta: {
               title: "API Reference",
@@ -450,8 +264,6 @@ npm ERR! Error: EACCES: permission denied
 - Check our [community forum](https://community.myproject.com)
 - Review [GitHub issues](https://github.com/myproject/issues)
 - Contact support with detailed error messages
-
-> **Note**: This documentation is currently using fallback content. The public GitHub repository may be temporarily unavailable.
             `,
             meta: {
               title: "Troubleshooting",
@@ -505,8 +317,6 @@ const results = await project.getBatch(ids);
 
 - [Basic Usage](${routeConfig.buildPath('examples/basic-usage')})
 - [Advanced Topics](${routeConfig.buildPath('examples/advanced')})
-
-> **Note**: This documentation is currently using fallback content. The public GitHub repository may be temporarily unavailable.
             `,
             meta: {
               title: "Examples",
@@ -549,8 +359,6 @@ export MYPROJECT_API_KEY=your_api_key_here
 ## Next Steps
 
 Once you're comfortable with the basics, check out [Advanced Examples](${routeConfig.buildPath('examples/advanced')}).
-
-> **Note**: This documentation is currently using fallback content. The public GitHub repository may be temporarily unavailable.
             `,
             meta: {
               title: "Basic Usage",
@@ -608,8 +416,6 @@ const results = await Promise.all([
 // Use batch operation
 const results = await project.getBatch(['id1', 'id2', 'id3']);
 \`\`\`
-
-> **Note**: This documentation is currently using fallback content. The public GitHub repository may be temporarily unavailable.
             `,
             meta: {
               title: "Advanced Examples",
@@ -631,7 +437,7 @@ const results = await project.getBatch(['id1', 'id2', 'id3']);
         setDocContent(mockDoc.content);
         setDocMeta(mockDoc.meta);
       } catch (err) {
-        console.error('Error loading mock doc:', err);
+        console.error('Error loading doc:', err);
         setError("Failed to load documentation");
       } finally {
         setLoading(false);
@@ -640,6 +446,11 @@ const results = await project.getBatch(['id1', 'id2', 'id3']);
 
     loadDoc();
   }, [slug]);
+
+  // Preload common docs on mount
+  useEffect(() => {
+    githubDocsCache.preloadCommonDocs();
+  }, []);
 
   if (loading) {
     return (

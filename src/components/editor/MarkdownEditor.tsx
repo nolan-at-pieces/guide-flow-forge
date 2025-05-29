@@ -6,9 +6,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
-import { Save, Eye, EyeOff, Github, Plus, Settings } from 'lucide-react';
+import { Save, Eye, EyeOff, Github, ArrowLeft, Plus, Settings } from 'lucide-react';
 import SlashCommandMenu from './SlashCommandMenu';
 import MDXRenderer from '@/components/mdx-renderer';
+import { useNavigate } from 'react-router-dom';
 
 interface MarkdownEditorProps {
   initialContent: string;
@@ -38,6 +39,7 @@ const MarkdownEditor = ({
   isNewPage = false
 }: MarkdownEditorProps) => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [content, setContent] = useState(initialContent);
   const [title, setTitle] = useState(initialTitle);
   const [slug, setSlug] = useState(initialSlug);
@@ -56,7 +58,7 @@ const MarkdownEditor = ({
       const textBefore = content.substring(0, cursorPos);
       
       // Only show slash menu if / is at start of line or after whitespace
-      if (cursorPos === 0 || /\s$/.test(textBefore)) {
+      if (cursorPos === 0 || /\s$/.test(textBefore) || textBefore.endsWith('\n')) {
         e.preventDefault();
         setCursorPosition(cursorPos);
         
@@ -68,7 +70,7 @@ const MarkdownEditor = ({
         
         setSlashMenuPosition({
           x: rect.left + 10,
-          y: rect.top + (currentLine * lineHeight) + 30
+          y: rect.top + (currentLine * lineHeight) + 50
         });
         setShowSlashMenu(true);
       }
@@ -124,15 +126,30 @@ const MarkdownEditor = ({
   return (
     <div className="h-full flex flex-col">
       {/* Header Controls */}
-      <div className="flex items-center justify-between p-4 border-b bg-background">
+      <div className="flex items-center justify-between p-4 border-b bg-background sticky top-0 z-40">
         <div className="flex items-center gap-4">
+          <Button 
+            onClick={() => navigate('/')} 
+            variant="ghost" 
+            size="sm"
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Docs
+          </Button>
           <Button onClick={() => setShowPreview(!showPreview)} variant="outline" size="sm">
             {showPreview ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             {showPreview ? 'Edit' : 'Preview'}
           </Button>
-          <Badge variant="secondary">Edit Mode</Badge>
+          <Badge variant="secondary">
+            {isNewPage ? 'Creating New Page' : 'Editing'}
+          </Badge>
         </div>
         <div className="flex items-center gap-2">
+          <Button onClick={() => navigate('/edit/new')} variant="outline" size="sm">
+            <Plus className="w-4 h-4 mr-2" />
+            New Page
+          </Button>
           {onPublishToGithub && (
             <Button onClick={onPublishToGithub} variant="outline" size="sm">
               <Github className="w-4 h-4 mr-2" />
@@ -185,25 +202,77 @@ const MarkdownEditor = ({
       </div>
 
       {/* Editor/Preview Area */}
-      <div className="flex-1 flex">
+      <div className="flex-1 flex overflow-hidden">
         {!showPreview ? (
-          <div className="w-full relative">
-            <Textarea
-              ref={textareaRef}
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Start typing... Use / for commands"
-              className="w-full h-full resize-none border-0 focus:ring-0 font-mono text-sm leading-relaxed"
-              style={{ minHeight: 'calc(100vh - 300px)' }}
-            />
-            {showSlashMenu && (
-              <SlashCommandMenu
-                position={slashMenuPosition}
-                onSelect={insertAtCursor}
-                onClose={() => setShowSlashMenu(false)}
+          <div className="w-full relative flex">
+            <div className="flex-1 relative">
+              <Textarea
+                ref={textareaRef}
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Start typing... Use / for commands"
+                className="w-full h-full resize-none border-0 focus:ring-0 font-mono text-sm leading-relaxed p-6"
+                style={{ minHeight: 'calc(100vh - 300px)' }}
               />
-            )}
+              {showSlashMenu && (
+                <SlashCommandMenu
+                  position={slashMenuPosition}
+                  onSelect={insertAtCursor}
+                  onClose={() => setShowSlashMenu(false)}
+                />
+              )}
+            </div>
+            
+            {/* Markdown Cheatsheet */}
+            <div className="w-72 border-l bg-muted/30 p-4 overflow-auto">
+              <h3 className="font-medium mb-3 text-sm">Markdown Quick Reference</h3>
+              <div className="space-y-2 text-xs">
+                <div>
+                  <code className="bg-background px-1 rounded">**bold**</code>
+                  <span className="ml-2 text-muted-foreground">Bold text</span>
+                </div>
+                <div>
+                  <code className="bg-background px-1 rounded">*italic*</code>
+                  <span className="ml-2 text-muted-foreground">Italic text</span>
+                </div>
+                <div>
+                  <code className="bg-background px-1 rounded"># H1</code>
+                  <span className="ml-2 text-muted-foreground">Heading 1</span>
+                </div>
+                <div>
+                  <code className="bg-background px-1 rounded">## H2</code>
+                  <span className="ml-2 text-muted-foreground">Heading 2</span>
+                </div>
+                <div>
+                  <code className="bg-background px-1 rounded">- item</code>
+                  <span className="ml-2 text-muted-foreground">Bullet list</span>
+                </div>
+                <div>
+                  <code className="bg-background px-1 rounded">1. item</code>
+                  <span className="ml-2 text-muted-foreground">Numbered list</span>
+                </div>
+                <div>
+                  <code className="bg-background px-1 rounded">`code`</code>
+                  <span className="ml-2 text-muted-foreground">Inline code</span>
+                </div>
+                <div>
+                  <code className="bg-background px-1 rounded">```js</code>
+                  <span className="ml-2 text-muted-foreground">Code block</span>
+                </div>
+                <div>
+                  <code className="bg-background px-1 rounded">[link](url)</code>
+                  <span className="ml-2 text-muted-foreground">Link</span>
+                </div>
+                <div>
+                  <code className="bg-background px-1 rounded">![alt](img)</code>
+                  <span className="ml-2 text-muted-foreground">Image</span>
+                </div>
+                <div className="pt-2 border-t">
+                  <p className="text-muted-foreground">Type <kbd>/</kbd> for quick insert menu</p>
+                </div>
+              </div>
+            </div>
           </div>
         ) : (
           <div className="w-full p-6 overflow-auto">

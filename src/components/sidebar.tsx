@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -7,7 +6,7 @@ import { useLocation, Link } from "react-router-dom";
 import { routeConfig } from "@/config/routes";
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/hooks/useAuth";
-import { useGitHubDocsList } from "@/hooks/useGitHubDocs";
+import { githubDocsCache } from "@/services/githubDocsCache";
 
 interface DocItem {
   title: string;
@@ -26,16 +25,82 @@ interface SidebarProps {
 const Sidebar = ({ activeSection }: SidebarProps) => {
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const [docTree, setDocTree] = useState<DocItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const location = useLocation();
   const { user, isAdmin, isEditor } = useAuth();
-  const { docs, loading, error } = useGitHubDocsList();
 
   useEffect(() => {
-    if (docs && docs.length > 0) {
-      const tree = buildTreeFromDocs(docs, activeSection);
-      setDocTree(tree);
-    }
-  }, [docs, activeSection]);
+    const loadDocs = async () => {
+      setLoading(true);
+      setError(null);
+      
+      try {
+        // Get all cached docs
+        const docs = githubDocsCache.getAllCachedDocs();
+        
+        if (docs.length > 0) {
+          const tree = buildTreeFromDocs(docs, activeSection);
+          setDocTree(tree);
+        } else {
+          // If no cached docs, create a basic tree structure
+          const basicTree = [
+            {
+              title: "Getting Started",
+              slug: "getting-started", 
+              order: 1,
+              icon: "🚀",
+              children: [
+                {
+                  title: "Installation",
+                  slug: "getting-started/installation",
+                  order: 1
+                }
+              ]
+            },
+            {
+              title: "Examples",
+              slug: "examples",
+              order: 3,
+              icon: "💡",
+              children: [
+                {
+                  title: "Basic Usage", 
+                  slug: "examples/basic-usage",
+                  order: 1
+                },
+                {
+                  title: "Advanced Examples",
+                  slug: "examples/advanced", 
+                  order: 2
+                }
+              ]
+            },
+            {
+              title: "API Reference",
+              slug: "api-reference",
+              order: 2,
+              icon: "📚"
+            },
+            {
+              title: "Troubleshooting", 
+              slug: "troubleshooting",
+              order: 4,
+              icon: "🔧"
+            }
+          ];
+          setDocTree(basicTree);
+        }
+      } catch (err) {
+        console.error('Error loading docs for sidebar:', err);
+        setError('Failed to load navigation');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadDocs();
+  }, [activeSection]);
 
   const buildTreeFromDocs = (docs: any[], section: string): DocItem[] => {
     console.log('Building tree for section:', section, 'with docs:', docs.map(d => `${d.slug} (${d.title})`));
@@ -221,7 +286,7 @@ const Sidebar = ({ activeSection }: SidebarProps) => {
     return (
       <div className="p-3">
         <div className="text-sm text-red-600">
-          Error loading navigation: {error}
+          {error}
         </div>
       </div>
     );
@@ -231,7 +296,7 @@ const Sidebar = ({ activeSection }: SidebarProps) => {
     return (
       <div className="p-3">
         <div className="text-sm text-muted-foreground">
-          No documentation found in the repository.
+          No documentation found.
           {(isAdmin || isEditor) && user && (
             <div className="mt-2">
               <span className="text-xs">Add .md files to the docs folder in your GitHub repository.</span>
