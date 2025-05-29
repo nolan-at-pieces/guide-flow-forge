@@ -126,53 +126,65 @@ const Layout = ({ children, rightSidebar }: LayoutProps) => {
       {/* Footer */}
       <footer className="border-t bg-background">
         <div className="container mx-auto px-6 py-8">
-          <div className="flex flex-col items-center space-y-4">
-            {/* Social Links */}
-            <div className="flex items-center space-x-4">
-              <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                <a href="https://github.com" target="_blank" rel="noopener noreferrer">
-                  <Github className="h-4 w-4" />
-                  <span className="sr-only">GitHub</span>
-                </a>
-              </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer">
-                  <Linkedin className="h-4 w-4" />
-                  <span className="sr-only">LinkedIn</span>
-                </a>
-              </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                <a href="https://instagram.com" target="_blank" rel="noopener noreferrer">
-                  <Instagram className="h-4 w-4" />
-                  <span className="sr-only">Instagram</span>
-                </a>
-              </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                <a href="https://website.com" target="_blank" rel="noopener noreferrer">
-                  <Globe className="h-4 w-4" />
-                  <span className="sr-only">Website</span>
-                </a>
-              </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                <a href="https://youtube.com" target="_blank" rel="noopener noreferrer">
-                  <Youtube className="h-4 w-4" />
-                  <span className="sr-only">YouTube</span>
-                </a>
-              </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                <a href="https://twitter.com" target="_blank" rel="noopener noreferrer">
-                  <Twitter className="h-4 w-4" />
-                  <span className="sr-only">Twitter</span>
+          <div className="flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0">
+            {/* Left side - Logo and Pieces button */}
+            <div className="flex items-center space-x-3">
+              <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center">
+                <span className="text-primary-foreground font-bold text-sm">P</span>
+              </div>
+              <Button variant="ghost" className="text-foreground hover:text-primary" asChild>
+                <a href="https://pieces.app" target="_blank" rel="noopener noreferrer">
+                  Pieces
                 </a>
               </Button>
             </div>
             
-            {/* Separator */}
-            <Separator className="w-full max-w-xs" />
-            
-            {/* Copyright */}
-            <div className="text-center text-sm text-muted-foreground">
-              <p>©2025 • Pieces for Developers</p>
+            {/* Right side - Social icons and copyright */}
+            <div className="flex flex-col items-center space-y-4">
+              {/* Social Links */}
+              <div className="flex items-center space-x-4">
+                <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                  <a href="https://github.com" target="_blank" rel="noopener noreferrer">
+                    <Github className="h-4 w-4" />
+                    <span className="sr-only">GitHub</span>
+                  </a>
+                </Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                  <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer">
+                    <Linkedin className="h-4 w-4" />
+                    <span className="sr-only">LinkedIn</span>
+                  </a>
+                </Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                  <a href="https://instagram.com" target="_blank" rel="noopener noreferrer">
+                    <Instagram className="h-4 w-4" />
+                    <span className="sr-only">Instagram</span>
+                  </a>
+                </Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                  <a href="https://website.com" target="_blank" rel="noopener noreferrer">
+                    <Globe className="h-4 w-4" />
+                    <span className="sr-only">Website</span>
+                  </a>
+                </Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                  <a href="https://youtube.com" target="_blank" rel="noopener noreferrer">
+                    <Youtube className="h-4 w-4" />
+                    <span className="sr-only">YouTube</span>
+                  </a>
+                </Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                  <a href="https://twitter.com" target="_blank" rel="noopener noreferrer">
+                    <Twitter className="h-4 w-4" />
+                    <span className="sr-only">Twitter</span>
+                  </a>
+                </Button>
+              </div>
+              
+              {/* Copyright */}
+              <div className="text-center text-sm text-muted-foreground">
+                <p>©2025 • Pieces for Developers</p>
+              </div>
             </div>
           </div>
         </div>
