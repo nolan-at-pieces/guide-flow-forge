@@ -5,7 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Plus, FileText, Home } from 'lucide-react';
+import { ArrowLeft, Plus, FileText, Home, Settings } from 'lucide-react';
 import MarkdownEditor from '@/components/editor/MarkdownEditor';
 import GitHubIntegration from '@/components/editor/GitHubIntegration';
 import { useGitHubDocs } from '@/hooks/useGitHubDocs';
@@ -34,12 +34,8 @@ const EditPage = () => {
     }
 
     if (!isConfigured) {
-      toast({
-        title: "GitHub Not Configured",
-        description: "Please configure GitHub integration in the admin panel first.",
-        variant: "destructive",
-      });
-      navigate('/admin');
+      // Don't navigate automatically, just show the configuration message
+      setLoading(false);
       return;
     }
 
@@ -163,21 +159,40 @@ const EditPage = () => {
 
   if (!isConfigured) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Card>
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="max-w-md w-full">
           <CardHeader>
-            <CardTitle>GitHub Not Configured</CardTitle>
-            <CardDescription>Configure GitHub integration in the admin panel first.</CardDescription>
+            <CardTitle>GitHub Configuration Required</CardTitle>
+            <CardDescription>
+              You need to configure GitHub integration before you can edit documentation.
+            </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="flex gap-2">
-              <Button onClick={() => navigate('/admin')}>
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Go to Admin Panel
+          <CardContent className="space-y-4">
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded">
+              <p className="text-sm text-blue-800">
+                <strong>Quick Setup:</strong> Configure your GitHub repository to start editing documentation directly from this interface.
+              </p>
+            </div>
+            
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                You'll need:
+              </p>
+              <ul className="text-sm text-muted-foreground space-y-1 ml-4">
+                <li>• A GitHub repository</li>
+                <li>• A personal access token</li>
+                <li>• Repository write permissions</li>
+              </ul>
+            </div>
+            
+            <div className="flex flex-col gap-2">
+              <Button onClick={() => navigate('/admin')} className="w-full">
+                <Settings className="w-4 h-4 mr-2" />
+                Configure GitHub Integration
               </Button>
-              <Button variant="outline" onClick={() => navigate('/')}>
+              <Button variant="outline" onClick={() => navigate('/')} className="w-full">
                 <Home className="w-4 h-4 mr-2" />
-                Back to Docs
+                Back to Documentation
               </Button>
             </div>
           </CardContent>
