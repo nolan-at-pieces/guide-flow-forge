@@ -207,7 +207,11 @@ Understand API rate limits and best practices.
   }
 
   if (notFound) {
-    return <DocNotFound />;
+    return (
+      <Layout>
+        <DocNotFound />
+      </Layout>
+    );
   }
 
   if (error) {
