@@ -1,9 +1,13 @@
+---
+title: "Untitled"
+order: 0
+---
 
 ---
 title: "Examples"
 description: "Real-world examples and use cases"
 order: 3
-icon: "💡"
+icon: "ð¡"
 tags: ["examples", "tutorials", "code"]
 ---
 
@@ -35,7 +39,7 @@ const app = new MyProject({
   debug: false
 });
 
-await app.initialize();
+await app.initialize();s
 ```
 
 ## Advanced Examples
@@ -248,4 +252,4 @@ Ready to implement these examples? Check out:
 - [SDK Downloads](sdks) for language-specific libraries
 - [Getting Started](getting-started) for initial setup
 
-> **💡 Tip**: All examples include error handling and follow best practices for production use.
+> **ð¡ Tip**: All examples include error handling and follow best practices for production use.
