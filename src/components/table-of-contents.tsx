@@ -73,17 +73,29 @@ const TableOfContentsComponent = ({ content }: TableOfContentsProps) => {
       }
     );
 
-    // Smooth scroll progress tracking
+    // Smooth scroll progress tracking with bounds checking
     const handleScroll = () => {
       if (frameRef.current) {
         cancelAnimationFrame(frameRef.current);
       }
       
       frameRef.current = requestAnimationFrame(() => {
-        const scrollTop = window.scrollY;
+        const scrollTop = Math.max(0, window.scrollY);
         const docHeight = document.documentElement.scrollHeight - window.innerHeight;
-        const scrollPercent = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
-        setScrollProgress(Math.min(100, Math.max(0, scrollPercent)));
+        
+        // Prevent division by zero and ensure valid bounds
+        if (docHeight <= 0) {
+          setScrollProgress(0);
+          return;
+        }
+        
+        const scrollPercent = Math.min(100, Math.max(0, (scrollTop / docHeight) * 100));
+        
+        // Only update if the change is significant to prevent jitter
+        setScrollProgress(prev => {
+          const diff = Math.abs(prev - scrollPercent);
+          return diff > 0.1 ? scrollPercent : prev;
+        });
       });
     };
 
@@ -94,14 +106,22 @@ const TableOfContentsComponent = ({ content }: TableOfContentsProps) => {
       
       headings.forEach((heading) => observer.observe(heading));
       
-      // Set initial active heading based on scroll position
+      // Set initial active heading based on scroll position with better top handling
       if (headings.length > 0) {
-        const viewportTop = window.scrollY + window.innerHeight * 0.3;
+        const scrollTop = window.scrollY;
+        
+        // If we're at the very top, always highlight the first heading
+        if (scrollTop < 100) {
+          setActiveId(headings[0].id);
+          return;
+        }
+        
+        const viewportTop = scrollTop + window.innerHeight * 0.3;
         let closestHeading = headings[0];
         
         for (const heading of headings) {
           const rect = heading.getBoundingClientRect();
-          const elementTop = window.scrollY + rect.top;
+          const elementTop = scrollTop + rect.top;
           
           if (elementTop <= viewportTop) {
             closestHeading = heading;
@@ -159,9 +179,10 @@ const TableOfContentsComponent = ({ content }: TableOfContentsProps) => {
             
             {/* Progress highlight line */}
             <div 
-              className="absolute left-0 top-0 w-0.5 bg-primary transition-all duration-300 ease-out"
+              className="absolute left-0 top-0 w-0.5 bg-primary will-change-transform"
               style={{
-                height: `${scrollProgress}%`
+                height: `${scrollProgress}%`,
+                transition: 'height 0.15s ease-out'
               }}
             ></div>
             
@@ -174,7 +195,8 @@ const TableOfContentsComponent = ({ content }: TableOfContentsProps) => {
                     <button
                       onClick={() => scrollToHeading(item.id)}
                       className={cn(
-                        "block w-full text-left text-sm py-2 pl-4 pr-4 rounded-r relative ml-2 transition-all duration-200 ease-out hover:bg-muted/50",
+                        "block w-full text-left text-sm py-2 pl-4 pr-4 rounded-r relative ml-2 will-change-transform",
+                        "transition-all duration-150 ease-out hover:bg-muted/50",
                         isActive 
                           ? "text-primary font-medium bg-primary/10" 
                           : "text-muted-foreground hover:text-foreground",
