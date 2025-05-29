@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -6,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { useLocation, Link } from "react-router-dom";
 import { routeConfig } from "@/config/routes";
 import { Separator } from "@/components/ui/separator";
-import TopNav from "@/components/top-nav";
 
 interface DocItem {
   title: string;
@@ -18,8 +16,11 @@ interface DocItem {
   dividerLabel?: string;
 }
 
-const Sidebar = () => {
-  const [activeSection, setActiveSection] = useState("products");
+interface SidebarProps {
+  activeSection: string;
+}
+
+const Sidebar = ({ activeSection }: SidebarProps) => {
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const location = useLocation();
 
@@ -108,16 +109,9 @@ const Sidebar = () => {
   const docTree = sectionContent[activeSection as keyof typeof sectionContent] || [];
 
   useEffect(() => {
-    // Auto-expand the current section and determine active section from URL
+    // Auto-expand the current section
     const currentSlug = routeConfig.extractSlug(location.pathname);
     const topLevelSection = currentSlug.split('/')[0];
-    
-    // Determine which section should be active based on current route
-    if (currentSlug.startsWith('api-reference') || currentSlug.startsWith('sdks') || currentSlug.startsWith('webhooks')) {
-      setActiveSection("api");
-    } else {
-      setActiveSection("products");
-    }
     
     if (topLevelSection) {
       setExpandedItems(new Set([topLevelSection]));
@@ -195,13 +189,10 @@ const Sidebar = () => {
   };
 
   return (
-    <div className="space-y-0">
-      <TopNav activeSection={activeSection} onSectionChange={setActiveSection} />
-      <div className="p-6">
-        <nav className="space-y-1">
-          {docTree.map(item => renderDocItem(item))}
-        </nav>
-      </div>
+    <div className="p-0">
+      <nav className="space-y-1">
+        {docTree.map(item => renderDocItem(item))}
+      </nav>
     </div>
   );
 };

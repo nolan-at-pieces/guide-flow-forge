@@ -7,6 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { useTheme } from "@/components/theme-provider";
 import Sidebar from "@/components/sidebar";
 import SearchDialog from "@/components/search-dialog";
+import TopNav from "@/components/top-nav";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -15,6 +16,7 @@ interface LayoutProps {
 
 const Layout = ({ children, rightSidebar }: LayoutProps) => {
   const [searchOpen, setSearchOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState("products");
   const { theme, setTheme } = useTheme();
 
   const toggleTheme = () => {
@@ -56,7 +58,7 @@ const Layout = ({ children, rightSidebar }: LayoutProps) => {
                   </a>
                 </div>
                 <div className="px-6 pb-6">
-                  <Sidebar />
+                  <Sidebar activeSection={activeSection} />
                 </div>
               </SheetContent>
             </Sheet>
@@ -96,13 +98,16 @@ const Layout = ({ children, rightSidebar }: LayoutProps) => {
             </Button>
           </div>
         </div>
+        
+        {/* Top Navigation */}
+        <TopNav activeSection={activeSection} onSectionChange={setActiveSection} />
       </header>
 
       <div className="flex flex-1">
         {/* Left Sidebar */}
         <aside className="hidden md:flex w-64 shrink-0 border-r">
-          <div className="sticky top-16 h-[calc(100vh-4rem)] w-full overflow-auto p-6">
-            <Sidebar />
+          <div className="sticky top-[calc(4rem+53px)] h-[calc(100vh-4rem-53px)] w-full overflow-auto p-6">
+            <Sidebar activeSection={activeSection} />
           </div>
         </aside>
 
@@ -116,7 +121,7 @@ const Layout = ({ children, rightSidebar }: LayoutProps) => {
         {/* Right Sidebar (TOC) */}
         {rightSidebar && (
           <aside className="hidden xl:flex shrink-0 border-l">
-            <div className="sticky top-16 h-[calc(100vh-4rem)] p-6">
+            <div className="sticky top-[calc(4rem+53px)] h-[calc(100vh-4rem-53px)] p-6">
               {rightSidebar}
             </div>
           </aside>
