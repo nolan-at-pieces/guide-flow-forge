@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +8,7 @@ import Layout from "@/components/layout";
 import DocNotFound from "@/components/doc-not-found";
 import DocError from "@/components/doc-error";
 import { routeConfig } from "@/config/routes";
+import { supabase } from "@/integrations/supabase/client";
 
 interface DocMeta {
   title: string;
@@ -36,9 +38,28 @@ const DocsPage = () => {
       setNotFound(false);
 
       try {
-        const mockDocs: Record<string, { content: string; meta: DocMeta }> = {
-          "getting-started": {
-            content: `# Getting Started
+        // Try to fetch from database first
+        const { data: doc, error: dbError } = await supabase
+          .from('doc_content')
+          .select('*')
+          .eq('slug', slug)
+          .eq('is_published', true)
+          .single();
+
+        if (doc && !dbError) {
+          setDocContent(doc.content);
+          setDocMeta({
+            title: doc.title,
+            description: doc.description || undefined,
+            order: doc.order_index || 0,
+            icon: doc.icon || undefined,
+            tags: doc.tags || undefined,
+          });
+        } else {
+          // Fallback to mock data for backward compatibility
+          const mockDocs: Record<string, { content: string; meta: DocMeta }> = {
+            "getting-started": {
+              content: `# Getting Started
 
 Welcome to MyProject! This guide will help you get up and running quickly.
 
@@ -77,17 +98,17 @@ project.init().then(() => {
 - Read the [API Reference](${routeConfig.buildPath('api-reference')})
 - Check out [Examples](${routeConfig.buildPath('examples')})
 - Learn about [Advanced Topics](${routeConfig.buildPath('advanced')})
-            `,
-            meta: {
-              title: "Getting Started",
-              description: "Learn how to get started with MyProject",
-              order: 1,
-              icon: "🚀",
-              tags: ["basics", "setup"]
-            }
-          },
-          "getting-started/installation": {
-            content: `# Installation
+              `,
+              meta: {
+                title: "Getting Started",
+                description: "Learn how to get started with MyProject",
+                order: 1,
+                icon: "🚀",
+                tags: ["basics", "setup"]
+              }
+            },
+            "getting-started/installation": {
+              content: `# Installation
 
 Install MyProject using your preferred package manager.
 
@@ -113,16 +134,16 @@ pnpm add myproject
 
 - Node.js 16 or higher
 - npm 7 or higher
-            `,
-            meta: {
-              title: "Installation",
-              description: "How to install MyProject",
-              order: 1,
-              tags: ["installation", "setup"]
-            }
-          },
-          "api-reference": {
-            content: `# API Reference
+              `,
+              meta: {
+                title: "Installation",
+                description: "How to install MyProject",
+                order: 1,
+                tags: ["installation", "setup"]
+              }
+            },
+            "api-reference": {
+              content: `# API Reference
 
 Complete reference for MyProject API.
 
@@ -174,26 +195,28 @@ Handle errors gracefully in your application.
 ### Rate Limiting
 
 Understand API rate limits and best practices.
-            `,
-            meta: {
-              title: "API Reference",
-              description: "Complete API documentation",
-              order: 2,
-              icon: "📚",
-              tags: ["api", "reference"]
+              `,
+              meta: {
+                title: "API Reference",
+                description: "Complete API documentation",
+                order: 2,
+                icon: "📚",
+                tags: ["api", "reference"]
+              }
             }
+          };
+
+          const mockDoc = mockDocs[slug];
+          if (!mockDoc) {
+            setNotFound(true);
+            return;
           }
-        };
 
-        const doc = mockDocs[slug];
-        if (!doc) {
-          setNotFound(true);
-          return;
+          setDocContent(mockDoc.content);
+          setDocMeta(mockDoc.meta);
         }
-
-        setDocContent(doc.content);
-        setDocMeta(doc.meta);
       } catch (err) {
+        console.error('Error loading doc:', err);
         setError("Failed to load documentation");
       } finally {
         setLoading(false);
