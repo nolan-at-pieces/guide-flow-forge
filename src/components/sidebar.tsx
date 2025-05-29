@@ -155,7 +155,7 @@ const Sidebar = ({ activeSection }: SidebarProps) => {
               .replace('.md', '');
 
             const doc = {
-              title: metadata.title || slug.replace('-', ' '),
+              title: metadata.title || slug.split('/').pop()?.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Untitled',
               slug,
               order: metadata.order || 0,
               icon: metadata.icon
@@ -221,7 +221,7 @@ const Sidebar = ({ activeSection }: SidebarProps) => {
       if (parts.length === 1) {
         // Top-level document
         grouped[topLevel].unshift({
-          title: doc.title || topLevel.replace('-', ' '),
+          title: doc.title,
           slug: doc.slug,
           order: doc.order || 0,
           icon: doc.icon
@@ -229,7 +229,7 @@ const Sidebar = ({ activeSection }: SidebarProps) => {
       } else {
         // Child document
         grouped[topLevel].push({
-          title: doc.title || parts[parts.length - 1].replace('-', ' '),
+          title: doc.title,
           slug: doc.slug,
           order: doc.order || 0,
           icon: doc.icon
@@ -255,7 +255,7 @@ const Sidebar = ({ activeSection }: SidebarProps) => {
         // Create a parent from the first child if no parent exists
         const firstChild = children[0];
         tree.push({
-          title: key.charAt(0).toUpperCase() + key.slice(1).replace('-', ' '),
+          title: key.charAt(0).toUpperCase() + key.slice(1).replace(/-/g, ' '),
           slug: key,
           order: firstChild.order,
           children: children

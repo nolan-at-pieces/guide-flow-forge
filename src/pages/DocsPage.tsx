@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
@@ -456,20 +455,6 @@ Understand API rate limits and best practices.
           </div>
         )}
         
-        {docMeta && (
-          <div className="not-prose mb-8">
-            <div className="flex items-center gap-2 mb-2">
-              {docMeta.icon && <span className="text-2xl">{docMeta.icon}</span>}
-              <h1 className="text-4xl font-bold">{docMeta.title}</h1>
-            </div>
-            {docMeta.description && <p className="text-lg text-muted-foreground mb-4">{docMeta.description}</p>}
-            {docMeta.tags && (
-              <div className="flex gap-2">
-                {docMeta.tags.map(tag => <Badge key={tag} variant="secondary">{tag}</Badge>)}
-              </div>
-            )}
-          </div>
-        )}
         <MDXRenderer content={docContent} />
       </article>
     </Layout>
