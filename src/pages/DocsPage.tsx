@@ -272,7 +272,7 @@ Understand API rate limits and best practices.
   return (
     <Layout rightSidebar={<TableOfContentsComponent content={docContent} />}>
       <article className="prose prose-slate dark:prose-invert max-w-none">
-        {/* Configuration Notice for Admins */}
+        {/* Configuration Notice for Admins - Only show to logged in admins/editors */}
         {!isConfigured && (isAdmin || isEditor) && user && (
           <div className="not-prose mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
             <div className="flex items-center justify-between">
@@ -293,7 +293,7 @@ Understand API rate limits and best practices.
           </div>
         )}
 
-        {/* Edit Button for Admins/Editors */}
+        {/* Edit Button for Admins/Editors - Only show to logged in admins/editors */}
         {(isAdmin || isEditor) && user && (
           <div className="not-prose mb-4 flex justify-end">
             <Button 

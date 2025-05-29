@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -7,6 +6,7 @@ import { useLocation, Link } from "react-router-dom";
 import { routeConfig } from "@/config/routes";
 import { Separator } from "@/components/ui/separator";
 import { useGitHubDocs } from "@/hooks/useGitHubDocs";
+import { useAuth } from "@/hooks/useAuth";
 
 interface DocItem {
   title: string;
@@ -27,6 +27,7 @@ const Sidebar = ({ activeSection }: SidebarProps) => {
   const [docTree, setDocTree] = useState<DocItem[]>([]);
   const location = useLocation();
   const { service, isConfigured } = useGitHubDocs();
+  const { user, isAdmin, isEditor } = useAuth();
 
   useEffect(() => {
     const buildNavigationFromGitHub = async () => {
@@ -268,7 +269,8 @@ const Sidebar = ({ activeSection }: SidebarProps) => {
   return (
     <div className="p-0">
       <nav className="space-y-1">
-        {!isConfigured && (
+        {/* Only show configuration notice to logged in admins/editors */}
+        {!isConfigured && (isAdmin || isEditor) && user && (
           <div className="px-3 py-2 mb-4 text-xs text-muted-foreground bg-yellow-50 border border-yellow-200 rounded">
             Using fallback navigation. Configure GitHub in admin panel for dynamic content.
           </div>
