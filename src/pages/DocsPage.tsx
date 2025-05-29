@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import MDXRenderer from "@/components/mdx-renderer";
 import TableOfContentsComponent from "@/components/table-of-contents";
 import Layout from "@/components/layout";
+import DocNotFound from "@/components/doc-not-found";
+import DocError from "@/components/doc-error";
 
 interface DocMeta {
   title: string;
@@ -21,11 +22,13 @@ const DocsPage = () => {
   const [docMeta, setDocMeta] = useState<DocMeta | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
     const loadDoc = async () => {
       setLoading(true);
       setError(null);
+      setNotFound(false);
 
       try {
         const mockDocs: Record<string, { content: string; meta: DocMeta }> = {
@@ -179,7 +182,7 @@ Understand API rate limits and best practices.
 
         const doc = mockDocs[slug];
         if (!doc) {
-          setError("Documentation not found");
+          setNotFound(true);
           return;
         }
 
@@ -203,14 +206,12 @@ Understand API rate limits and best practices.
     );
   }
 
+  if (notFound) {
+    return <DocNotFound />;
+  }
+
   if (error) {
-    return (
-      <Layout>
-        <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      </Layout>
-    );
+    return <DocError error={error} />;
   }
 
   return (
