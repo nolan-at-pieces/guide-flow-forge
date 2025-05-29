@@ -1,8 +1,9 @@
 
 import { useState } from "react";
-import { Menu, Search, Moon, Sun, Monitor, Github } from "lucide-react";
+import { Menu, Search, Moon, Sun, Monitor, Github, Linkedin, Instagram, Globe, Youtube, Twitter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Separator } from "@/components/ui/separator";
 import { useTheme } from "@/components/theme-provider";
 import Sidebar from "@/components/sidebar";
 import SearchDialog from "@/components/search-dialog";
@@ -29,7 +30,7 @@ const Layout = ({ children, rightSidebar }: LayoutProps) => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="flex h-16 items-center justify-between px-6">
@@ -97,7 +98,7 @@ const Layout = ({ children, rightSidebar }: LayoutProps) => {
         </div>
       </header>
 
-      <div className="flex">
+      <div className="flex flex-1">
         {/* Left Sidebar */}
         <aside className="hidden md:flex w-64 shrink-0 border-r">
           <div className="sticky top-16 h-[calc(100vh-4rem)] w-full overflow-auto p-6">
@@ -121,6 +122,61 @@ const Layout = ({ children, rightSidebar }: LayoutProps) => {
           </aside>
         )}
       </div>
+
+      {/* Footer */}
+      <footer className="border-t bg-background">
+        <div className="container mx-auto px-6 py-8">
+          <div className="flex flex-col items-center space-y-4">
+            {/* Social Links */}
+            <div className="flex items-center space-x-4">
+              <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                <a href="https://github.com" target="_blank" rel="noopener noreferrer">
+                  <Github className="h-4 w-4" />
+                  <span className="sr-only">GitHub</span>
+                </a>
+              </Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer">
+                  <Linkedin className="h-4 w-4" />
+                  <span className="sr-only">LinkedIn</span>
+                </a>
+              </Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                <a href="https://instagram.com" target="_blank" rel="noopener noreferrer">
+                  <Instagram className="h-4 w-4" />
+                  <span className="sr-only">Instagram</span>
+                </a>
+              </Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                <a href="https://website.com" target="_blank" rel="noopener noreferrer">
+                  <Globe className="h-4 w-4" />
+                  <span className="sr-only">Website</span>
+                </a>
+              </Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                <a href="https://youtube.com" target="_blank" rel="noopener noreferrer">
+                  <Youtube className="h-4 w-4" />
+                  <span className="sr-only">YouTube</span>
+                </a>
+              </Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                <a href="https://twitter.com" target="_blank" rel="noopener noreferrer">
+                  <Twitter className="h-4 w-4" />
+                  <span className="sr-only">Twitter</span>
+                </a>
+              </Button>
+            </div>
+            
+            {/* Separator */}
+            <Separator className="w-full max-w-xs" />
+            
+            {/* Copyright */}
+            <div className="text-center text-sm text-muted-foreground">
+              <p>©2025 • Pieces for Developers</p>
+            </div>
+          </div>
+        </div>
+      </footer>
 
       <SearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
     </div>
