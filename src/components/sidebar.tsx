@@ -14,6 +14,7 @@ interface DocItem {
   icon?: string;
   children?: DocItem[];
   divider?: boolean; // Add divider property
+  dividerLabel?: string; // Add divider label property
 }
 
 const Sidebar = () => {
@@ -22,7 +23,7 @@ const Sidebar = () => {
   const location = useLocation();
 
   useEffect(() => {
-    // Mock documentation structure with dividers
+    // Mock documentation structure with dividers and labels
     const mockDocs: DocItem[] = [
       {
         title: "Products",
@@ -37,7 +38,8 @@ const Sidebar = () => {
         title: "Getting Started",
         slug: "getting-started",
         order: 2,
-        divider: true, // Add divider before this section
+        divider: true,
+        dividerLabel: "Documentation", // Add label for this section
         children: [
           { title: "Installation", slug: "getting-started/installation", order: 1 },
           { title: "Quick Start", slug: "getting-started/quick-start", order: 2 },
@@ -48,7 +50,8 @@ const Sidebar = () => {
         title: "API Reference",
         slug: "api-reference",
         order: 3,
-        divider: true, // Add divider before this section
+        divider: true,
+        dividerLabel: "Developer Resources", // Add label for this section
         children: [
           { title: "Authentication", slug: "api-reference/authentication", order: 1 },
           { title: "Endpoints", slug: "api-reference/endpoints", order: 2 },
@@ -69,7 +72,8 @@ const Sidebar = () => {
         title: "Troubleshooting",
         slug: "troubleshooting",
         order: 5,
-        divider: true, // Add divider before this section
+        divider: true,
+        dividerLabel: "Support", // Add label for this section
         children: [
           { title: "Common Issues", slug: "troubleshooting/common-issues", order: 1 },
           { title: "Debug Mode", slug: "troubleshooting/debug-mode", order: 2 },
@@ -105,9 +109,16 @@ const Sidebar = () => {
 
     return (
       <div key={item.slug} className="space-y-1">
-        {/* Render divider before the item if specified */}
+        {/* Render divider with optional label before the item if specified */}
         {item.divider && level === 0 && (
-          <div className="py-2">
+          <div className="py-3">
+            {item.dividerLabel && (
+              <div className="px-3 pb-2">
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  {item.dividerLabel}
+                </span>
+              </div>
+            )}
             <Separator className="bg-border" />
           </div>
         )}
