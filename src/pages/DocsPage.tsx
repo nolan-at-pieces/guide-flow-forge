@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
@@ -32,14 +33,24 @@ const PUBLIC_GITHUB_CONFIG = {
 const fetchPublicGitHubContent = async (path: string): Promise<string> => {
   const url = `https://api.github.com/repos/${PUBLIC_GITHUB_CONFIG.repository}/contents/${PUBLIC_GITHUB_CONFIG.basePath}/${path}?ref=${PUBLIC_GITHUB_CONFIG.branch}`;
   
+  console.log('Fetching from URL:', url);
+  
   const response = await fetch(url, {
     headers: {
       'Accept': 'application/vnd.github.v3+json',
+      'User-Agent': 'DocSite/1.0'
     }
   });
 
+  console.log('Response status:', response.status, response.statusText);
+
   if (!response.ok) {
-    throw new Error(`Failed to fetch ${path}: ${response.statusText}`);
+    if (response.status === 404) {
+      throw new Error(`Document not found: ${path}`);
+    }
+    const errorText = await response.text();
+    console.log('Error response:', errorText);
+    throw new Error(`Failed to fetch ${path}: ${response.status} ${response.statusText}`);
   }
 
   const data = await response.json();
@@ -193,10 +204,13 @@ const DocsPage = () => {
       setError(null);
       setNotFound(false);
 
+      console.log('Loading document for slug:', slug);
+
       // ALWAYS try to load from public GitHub repo first (for ALL users)
       try {
-        console.log('Loading doc from public GitHub repo:', slug);
         const filePath = slug.endsWith('.md') ? slug : `${slug}.md`;
+        console.log('Attempting to fetch file:', filePath);
+        
         const content = await fetchPublicGitHubContent(filePath);
         
         const { metadata, content: markdownContent } = parseFrontmatter(content);
@@ -207,7 +221,7 @@ const DocsPage = () => {
         
         setDocContent(markdownContent);
         setDocMeta({
-          title: metadata.title || slug.replace('-', ' '),
+          title: metadata.title || slug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
           description: metadata.description,
           order: metadata.order || 0,
           icon: metadata.icon,
@@ -218,12 +232,16 @@ const DocsPage = () => {
       } catch (err) {
         console.log('Failed to load from public GitHub:', err);
         
-        // Only set notFound if it's a 404-like error
-        if (err instanceof Error && err.message.includes('404')) {
+        // Only set notFound if it's specifically a 404 error
+        if (err instanceof Error && err.message.includes('Document not found')) {
+          console.log('Document not found, setting notFound to true');
           setNotFound(true);
           setLoading(false);
           return;
         }
+        
+        // For other errors, continue to fallback
+        console.log('GitHub error, falling back to mock data');
       }
 
       // Fallback to mock data when GitHub is not available
@@ -383,15 +401,233 @@ Understand API rate limits and best practices.
               icon: "📚",
               tags: ["api", "reference"]
             }
+          },
+          "troubleshooting": {
+            content: `# Troubleshooting
+
+Common issues and their solutions to help you resolve problems quickly.
+
+## Installation Issues
+
+### Permission Errors
+
+**Problem**: Getting permission denied errors during installation.
+
+\`\`\`bash
+npm ERR! Error: EACCES: permission denied
+\`\`\`
+
+**Solutions**:
+
+1. **Use npx (Recommended)**:
+   \`\`\`bash
+   npx create-myproject my-app
+   \`\`\`
+
+2. **Fix npm permissions**:
+   \`\`\`bash
+   sudo chown -R $(whoami) ~/.npm
+   \`\`\`
+
+## Authentication Issues
+
+### Invalid API Key
+
+**Problem**: Getting 401 Unauthorized errors.
+
+**Solutions**:
+
+1. **Verify your API key**:
+   \`\`\`javascript
+   console.log('API Key:', process.env.MYPROJECT_API_KEY?.substring(0, 8) + '...');
+   \`\`\`
+
+2. **Check environment variables**
+3. **Regenerate API key** if needed
+
+## Getting Help
+
+- Check our [community forum](https://community.myproject.com)
+- Review [GitHub issues](https://github.com/myproject/issues)
+- Contact support with detailed error messages
+
+> **Note**: This documentation is currently using fallback content. The public GitHub repository may be temporarily unavailable.
+            `,
+            meta: {
+              title: "Troubleshooting",
+              description: "Common issues and solutions",
+              order: 4,
+              icon: "🔧",
+              tags: ["troubleshooting", "debugging", "help"]
+            }
+          },
+          "examples": {
+            content: `# Examples
+
+Practical examples to help you understand how to use MyProject effectively.
+
+## Basic Usage
+
+Here's a simple example to get you started:
+
+\`\`\`javascript
+import { MyProject } from 'myproject';
+
+const project = new MyProject({
+  apiKey: 'your-api-key'
+});
+
+await project.init();
+console.log('Ready to use!');
+\`\`\`
+
+## Advanced Examples
+
+### Error Handling
+
+\`\`\`javascript
+try {
+  const result = await project.getData('some-id');
+  console.log(result);
+} catch (error) {
+  console.error('Failed to get data:', error);
+}
+\`\`\`
+
+### Batch Operations
+
+\`\`\`javascript
+const ids = ['id1', 'id2', 'id3'];
+const results = await project.getBatch(ids);
+\`\`\`
+
+## More Examples
+
+- [Basic Usage](${routeConfig.buildPath('examples/basic-usage')})
+- [Advanced Topics](${routeConfig.buildPath('examples/advanced')})
+
+> **Note**: This documentation is currently using fallback content. The public GitHub repository may be temporarily unavailable.
+            `,
+            meta: {
+              title: "Examples",
+              description: "Practical examples and use cases",
+              order: 3,
+              icon: "💡",
+              tags: ["examples", "tutorials"]
+            }
+          },
+          "examples/basic-usage": {
+            content: `# Basic Usage
+
+Learn the fundamentals of using MyProject.
+
+## Your First Project
+
+\`\`\`javascript
+import { MyProject } from 'myproject';
+
+const project = new MyProject({
+  apiKey: process.env.MYPROJECT_API_KEY
+});
+
+// Initialize the project
+await project.init();
+
+// Get some data
+const data = await project.getData('example');
+console.log(data);
+\`\`\`
+
+## Configuration
+
+Set up your environment variables:
+
+\`\`\`bash
+export MYPROJECT_API_KEY=your_api_key_here
+\`\`\`
+
+## Next Steps
+
+Once you're comfortable with the basics, check out [Advanced Examples](${routeConfig.buildPath('examples/advanced')}).
+
+> **Note**: This documentation is currently using fallback content. The public GitHub repository may be temporarily unavailable.
+            `,
+            meta: {
+              title: "Basic Usage",
+              description: "Learn the fundamentals",
+              order: 1,
+              tags: ["basics", "tutorial"]
+            }
+          },
+          "examples/advanced": {
+            content: `# Advanced Examples
+
+More complex use cases and patterns.
+
+## Custom Configuration
+
+\`\`\`javascript
+const project = new MyProject({
+  apiKey: 'your-api-key',
+  timeout: 30000,
+  retries: 3,
+  cache: {
+    enabled: true,
+    ttl: 300000
+  }
+});
+\`\`\`
+
+## Error Handling Patterns
+
+\`\`\`javascript
+async function safeGetData(id) {
+  try {
+    return await project.getData(id);
+  } catch (error) {
+    if (error.code === 'NOT_FOUND') {
+      return null;
+    }
+    throw error;
+  }
+}
+\`\`\`
+
+## Performance Optimization
+
+Use batch operations when possible:
+
+\`\`\`javascript
+// Instead of multiple individual calls
+const results = await Promise.all([
+  project.getData('id1'),
+  project.getData('id2'),
+  project.getData('id3')
+]);
+
+// Use batch operation
+const results = await project.getBatch(['id1', 'id2', 'id3']);
+\`\`\`
+
+> **Note**: This documentation is currently using fallback content. The public GitHub repository may be temporarily unavailable.
+            `,
+            meta: {
+              title: "Advanced Examples",
+              description: "Complex patterns and optimization",
+              order: 2,
+              tags: ["advanced", "performance"]
+            }
           }
         };
         
         const mockDoc = mockDocs[slug];
         if (!mockDoc) {
+          console.log('No mock doc found for slug:', slug);
           setNotFound(true);
           return;
         }
         
+        console.log('Using mock data for slug:', slug);
         setDocContent(mockDoc.content);
         setDocMeta(mockDoc.meta);
       } catch (err) {
