@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
@@ -11,8 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Edit } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
-import { useGitHubDocs, useGitHubDocsList } from "@/hooks/useGitHubDocs";
-import { DocContent } from "@/services/githubApi";
+import { useGitHubDocs } from "@/hooks/useGitHubDocs";
 
 interface DocMeta {
   title: string;
@@ -22,15 +22,14 @@ interface DocMeta {
   tags?: string[];
 }
 
-// Public GitHub repository configuration for unauthenticated users
+// Public GitHub repository configuration - used for ALL users
 const PUBLIC_GITHUB_CONFIG = {
   repository: "nolan-at-pieces/guide-flow-forge",
   branch: "main",
-  token: "", // No token needed for public repos
   basePath: "sample-docs"
 };
 
-// Simple function to fetch from public GitHub repo without authentication
+// Function to fetch from public GitHub repo without authentication
 const fetchPublicGitHubContent = async (path: string): Promise<string> => {
   const url = `https://api.github.com/repos/${PUBLIC_GITHUB_CONFIG.repository}/contents/${PUBLIC_GITHUB_CONFIG.basePath}/${path}?ref=${PUBLIC_GITHUB_CONFIG.branch}`;
   
@@ -53,6 +52,63 @@ const fetchPublicGitHubContent = async (path: string): Promise<string> => {
   return data.content;
 };
 
+// Simple frontmatter parsing for public docs
+const parseFrontmatter = (content: string) => {
+  const normalizedContent = content.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  
+  if (!normalizedContent.startsWith('---\n')) {
+    return {
+      metadata: { title: 'Untitled', order: 0 },
+      content: normalizedContent.trim()
+    };
+  }
+  
+  const contentAfterFirstDelimiter = normalizedContent.substring(4);
+  const endDelimiterIndex = contentAfterFirstDelimiter.indexOf('\n---\n');
+  
+  if (endDelimiterIndex === -1) {
+    return {
+      metadata: { title: 'Untitled', order: 0 },
+      content: normalizedContent.trim()
+    };
+  }
+  
+  const frontmatterSection = contentAfterFirstDelimiter.substring(0, endDelimiterIndex);
+  const contentAfterFrontmatter = contentAfterFirstDelimiter.substring(endDelimiterIndex + 5);
+  
+  const metadata: any = { order: 0 };
+  
+  const lines = frontmatterSection.split('\n');
+  for (const line of lines) {
+    const trimmedLine = line.trim();
+    if (!trimmedLine) continue;
+    
+    const colonIndex = trimmedLine.indexOf(':');
+    if (colonIndex > 0) {
+      const key = trimmedLine.substring(0, colonIndex).trim();
+      let value = trimmedLine.substring(colonIndex + 1).trim();
+      
+      value = value.replace(/^["']|["']$/g, '');
+      
+      if (key === 'order') {
+        metadata[key] = parseInt(value) || 0;
+      } else if (key === 'tags' && value.startsWith('[') && value.endsWith(']')) {
+        const arrayContent = value.slice(1, -1);
+        metadata[key] = arrayContent ? arrayContent.split(',').map(item => 
+          item.trim().replace(/^["']|["']$/g, '')
+        ) : [];
+      } else {
+        metadata[key] = value;
+      }
+    }
+  }
+  
+  return {
+    metadata,
+    content: contentAfterFrontmatter.trim()
+  };
+};
+
 const DocsPage = () => {
   const params = useParams();
   const location = useLocation();
@@ -64,20 +120,9 @@ const DocsPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
-  const {
-    user,
-    isAdmin,
-    isEditor
-  } = useAuth();
+  const { user, isAdmin, isEditor } = useAuth();
   const navigate = useNavigate();
-  const {
-    service,
-    isConfigured
-  } = useGitHubDocs();
-  const {
-    docs,
-    initialized
-  } = useGitHubDocsList();
+  const { isConfigured } = useGitHubDocs();
 
   useEffect(() => {
     const loadDoc = async () => {
@@ -85,119 +130,18 @@ const DocsPage = () => {
       setError(null);
       setNotFound(false);
 
-      // For authenticated users with GitHub configured, use the service
-      if (user && isConfigured && service && initialized && docs.length > 0) {
-        const doc = docs.find(d => d.slug === slug);
-        if (doc) {
-          console.log('Loading doc from cache:', doc);
-          setDocContent(doc.content);
-          setDocMeta({
-            title: doc.title,
-            description: doc.description,
-            order: doc.order || 0,
-            icon: doc.icon,
-            tags: doc.tags
-          });
-        } else {
-          setNotFound(true);
-        }
-        setLoading(false);
-        return;
-      }
-
-      // For authenticated users with GitHub configured but not yet initialized
-      if (user && isConfigured && service && !initialized) {
-        try {
-          const doc = await service.getDocBySlug(slug);
-          if (doc) {
-            console.log('Loading doc directly from GitHub:', doc);
-            setDocContent(doc.content);
-            setDocMeta({
-              title: doc.title,
-              description: doc.description,
-              order: doc.order || 0,
-              icon: doc.icon,
-              tags: doc.tags
-            });
-          } else {
-            setNotFound(true);
-          }
-          setLoading(false);
-          return;
-        } catch (err) {
-          console.error('Error loading doc from GitHub:', err);
-          setError("Failed to load documentation from GitHub");
-          setLoading(false);
-          return;
-        }
-      }
-
-      // For ALL users (authenticated or not), try to load from public GitHub repo first
+      // ALWAYS try to load from public GitHub repo first (for ALL users)
       try {
-        console.log('Attempting to load from public GitHub repo:', slug);
+        console.log('Loading doc from public GitHub repo:', slug);
         const filePath = slug.endsWith('.md') ? slug : `${slug}.md`;
         const content = await fetchPublicGitHubContent(filePath);
         
-        // Simple frontmatter parsing for public docs
-        const parseFrontmatter = (content: string) => {
-          const normalizedContent = content.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-          
-          if (!normalizedContent.startsWith('---\n')) {
-            return {
-              metadata: { title: 'Untitled', order: 0 },
-              content: normalizedContent.trim()
-            };
-          }
-          
-          const contentAfterFirstDelimiter = normalizedContent.substring(4);
-          const endDelimiterIndex = contentAfterFirstDelimiter.indexOf('\n---\n');
-          
-          if (endDelimiterIndex === -1) {
-            return {
-              metadata: { title: 'Untitled', order: 0 },
-              content: normalizedContent.trim()
-            };
-          }
-          
-          const frontmatterSection = contentAfterFirstDelimiter.substring(0, endDelimiterIndex);
-          const contentAfterFrontmatter = contentAfterFirstDelimiter.substring(endDelimiterIndex + 5);
-          
-          const metadata: any = { order: 0 };
-          
-          const lines = frontmatterSection.split('\n');
-          for (const line of lines) {
-            const trimmedLine = line.trim();
-            if (!trimmedLine) continue;
-            
-            const colonIndex = trimmedLine.indexOf(':');
-            if (colonIndex > 0) {
-              const key = trimmedLine.substring(0, colonIndex).trim();
-              let value = trimmedLine.substring(colonIndex + 1).trim();
-              
-              value = value.replace(/^["']|["']$/g, '');
-              
-              if (key === 'order') {
-                metadata[key] = parseInt(value) || 0;
-              } else if (key === 'tags' && value.startsWith('[') && value.endsWith(']')) {
-                const arrayContent = value.slice(1, -1);
-                metadata[key] = arrayContent ? arrayContent.split(',').map(item => 
-                  item.trim().replace(/^["']|["']$/g, '')
-                ) : [];
-              } else {
-                metadata[key] = value;
-              }
-            }
-          }
-          
-          return {
-            metadata,
-            content: contentAfterFrontmatter.trim()
-          };
-        };
-
         const { metadata, content: markdownContent } = parseFrontmatter(content);
         
         console.log('Successfully loaded from public GitHub:', slug);
+        console.log('Parsed metadata:', metadata);
+        console.log('Content length after frontmatter removal:', markdownContent.length);
+        
         setDocContent(markdownContent);
         setDocMeta({
           title: metadata.title || slug.replace('-', ' '),
@@ -209,7 +153,14 @@ const DocsPage = () => {
         setLoading(false);
         return;
       } catch (err) {
-        console.log('Failed to load from public GitHub, falling back to mock data:', err);
+        console.log('Failed to load from public GitHub:', err);
+        
+        // Only set notFound if it's a 404-like error
+        if (err instanceof Error && err.message.includes('404')) {
+          setNotFound(true);
+          setLoading(false);
+          return;
+        }
       }
 
       // Fallback to mock data when GitHub is not available
@@ -259,7 +210,7 @@ project.init().then(() => {
 - Check out [Examples](${routeConfig.buildPath('examples')})
 - Learn about [Advanced Topics](${routeConfig.buildPath('advanced')})
 
-> **Note**: This documentation is currently using fallback content. Configure GitHub integration in the admin panel to load docs from your repository.
+> **Note**: This documentation is currently using fallback content. The public GitHub repository may be temporarily unavailable.
             `,
             meta: {
               title: "Getting Started",
@@ -297,7 +248,7 @@ pnpm add myproject
 - Node.js 16 or higher
 - npm 7 or higher
 
-> **Note**: This documentation is currently using fallback content. Configure GitHub integration in the admin panel to load docs from your repository.
+> **Note**: This documentation is currently using fallback content. The public GitHub repository may be temporarily unavailable.
             `,
             meta: {
               title: "Installation",
@@ -360,7 +311,7 @@ Handle errors gracefully in your application.
 
 Understand API rate limits and best practices.
 
-> **Note**: This documentation is currently using fallback content. Configure GitHub integration in the admin panel to load docs from your repository.
+> **Note**: This documentation is currently using fallback content. The public GitHub repository may be temporarily unavailable.
             `,
             meta: {
               title: "API Reference",
@@ -371,11 +322,13 @@ Understand API rate limits and best practices.
             }
           }
         };
+        
         const mockDoc = mockDocs[slug];
         if (!mockDoc) {
           setNotFound(true);
           return;
         }
+        
         setDocContent(mockDoc.content);
         setDocMeta(mockDoc.meta);
       } catch (err) {
@@ -385,23 +338,32 @@ Understand API rate limits and best practices.
         setLoading(false);
       }
     };
+
     loadDoc();
-  }, [slug, service, isConfigured, docs, initialized, user]);
+  }, [slug]);
 
   if (loading) {
-    return <Layout>
+    return (
+      <Layout>
         <div className="animate-pulse">Loading...</div>
-      </Layout>;
+      </Layout>
+    );
   }
+
   if (notFound) {
-    return <Layout>
+    return (
+      <Layout>
         <DocNotFound />
-      </Layout>;
+      </Layout>
+    );
   }
+
   if (error) {
     return <DocError error={error} />;
   }
-  return <Layout rightSidebar={<TableOfContentsComponent content={docContent} />}>
+
+  return (
+    <Layout rightSidebar={<TableOfContentsComponent content={docContent} />}>
       <article className="prose prose-slate dark:prose-invert max-w-none">
         {/* Configuration Notice for Admins - Only show to logged in admins/editors */}
         {!isConfigured && (isAdmin || isEditor) && user && (
@@ -410,7 +372,7 @@ Understand API rate limits and best practices.
               <div>
                 <h3 className="text-sm font-medium text-yellow-800">GitHub Not Configured</h3>
                 <p className="text-sm text-yellow-700">
-                  Configure GitHub integration in the admin panel to load docs from your repository.
+                  Configure GitHub integration in the admin panel to enable editing capabilities.
                 </p>
               </div>
               <Button variant="outline" size="sm" onClick={() => navigate('/admin')}>
@@ -446,7 +408,8 @@ Understand API rate limits and best practices.
         )}
         <MDXRenderer content={docContent} />
       </article>
-    </Layout>;
+    </Layout>
+  );
 };
 
 export default DocsPage;

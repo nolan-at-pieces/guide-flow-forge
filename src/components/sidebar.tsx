@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { useLocation, Link } from "react-router-dom";
 import { routeConfig } from "@/config/routes";
 import { Separator } from "@/components/ui/separator";
-import { useGitHubDocsList } from "@/hooks/useGitHubDocs";
 import { useAuth } from "@/hooks/useAuth";
 
 interface DocItem {
@@ -23,20 +22,166 @@ interface SidebarProps {
   activeSection: string;
 }
 
+// Public GitHub repository configuration
+const PUBLIC_GITHUB_CONFIG = {
+  repository: "nolan-at-pieces/guide-flow-forge",
+  branch: "main",
+  basePath: "sample-docs"
+};
+
+// Function to fetch file tree from public GitHub repo
+const fetchPublicFileTree = async (): Promise<any[]> => {
+  const response = await fetch(
+    `https://api.github.com/repos/${PUBLIC_GITHUB_CONFIG.repository}/git/trees/${PUBLIC_GITHUB_CONFIG.branch}?recursive=1`,
+    {
+      headers: {
+        'Accept': 'application/vnd.github.v3+json',
+      }
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(`GitHub API error: ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  return data.tree.filter((file: any) => 
+    file.path.startsWith(PUBLIC_GITHUB_CONFIG.basePath) && 
+    file.type === 'blob' && 
+    file.path.endsWith('.md')
+  );
+};
+
+// Function to fetch file content from public GitHub repo
+const fetchPublicFileContent = async (path: string): Promise<string> => {
+  const url = `https://api.github.com/repos/${PUBLIC_GITHUB_CONFIG.repository}/contents/${path}?ref=${PUBLIC_GITHUB_CONFIG.branch}`;
+  
+  const response = await fetch(url, {
+    headers: {
+      'Accept': 'application/vnd.github.v3+json',
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch ${path}: ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  
+  if (data.encoding === 'base64') {
+    return atob(data.content.replace(/\s/g, ''));
+  }
+  
+  return data.content;
+};
+
+// Parse frontmatter from content
+const parseFrontmatter = (content: string) => {
+  const normalizedContent = content.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  
+  if (!normalizedContent.startsWith('---\n')) {
+    return {
+      metadata: { title: 'Untitled', order: 0 },
+      content: normalizedContent.trim()
+    };
+  }
+  
+  const contentAfterFirstDelimiter = normalizedContent.substring(4);
+  const endDelimiterIndex = contentAfterFirstDelimiter.indexOf('\n---\n');
+  
+  if (endDelimiterIndex === -1) {
+    return {
+      metadata: { title: 'Untitled', order: 0 },
+      content: normalizedContent.trim()
+    };
+  }
+  
+  const frontmatterSection = contentAfterFirstDelimiter.substring(0, endDelimiterIndex);
+  
+  const metadata: any = { order: 0 };
+  
+  const lines = frontmatterSection.split('\n');
+  for (const line of lines) {
+    const trimmedLine = line.trim();
+    if (!trimmedLine) continue;
+    
+    const colonIndex = trimmedLine.indexOf(':');
+    if (colonIndex > 0) {
+      const key = trimmedLine.substring(0, colonIndex).trim();
+      let value = trimmedLine.substring(colonIndex + 1).trim();
+      
+      value = value.replace(/^["']|["']$/g, '');
+      
+      if (key === 'order') {
+        metadata[key] = parseInt(value) || 0;
+      } else {
+        metadata[key] = value;
+      }
+    }
+  }
+  
+  return {
+    metadata,
+    content: normalizedContent.trim()
+  };
+};
+
 const Sidebar = ({ activeSection }: SidebarProps) => {
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const [docTree, setDocTree] = useState<DocItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const location = useLocation();
-  const { docs, loading, error, initialized } = useGitHubDocsList();
   const { user, isAdmin, isEditor } = useAuth();
 
   useEffect(() => {
-    if (docs.length > 0) {
-      console.log('Building navigation from GitHub docs:', docs.length, 'docs loaded');
-      const tree = buildTreeFromDocs(docs, activeSection);
-      setDocTree(tree);
-    }
-  }, [docs, activeSection]);
+    const loadDocsFromGitHub = async () => {
+      setLoading(true);
+      setError(null);
+      
+      try {
+        console.log('Loading docs from public GitHub for sidebar...');
+        const files = await fetchPublicFileTree();
+        const docs: any[] = [];
+
+        // Process all files
+        for (const file of files) {
+          try {
+            const content = await fetchPublicFileContent(file.path);
+            const { metadata } = parseFrontmatter(content);
+            
+            const slug = file.path
+              .replace(`${PUBLIC_GITHUB_CONFIG.basePath}/`, '')
+              .replace('.md', '');
+
+            const doc = {
+              title: metadata.title || slug.replace('-', ' '),
+              slug,
+              order: metadata.order || 0,
+              icon: metadata.icon
+            };
+
+            docs.push(doc);
+          } catch (error) {
+            console.error(`Error processing file ${file.path}:`, error);
+          }
+        }
+
+        console.log('Loaded docs from GitHub:', docs);
+        const tree = buildTreeFromDocs(docs, activeSection);
+        setDocTree(tree);
+      } catch (err) {
+        console.error('Error loading docs from GitHub:', err);
+        setError('Failed to load navigation');
+        // Fallback to empty state
+        setDocTree([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadDocsFromGitHub();
+  }, [activeSection]);
 
   const buildTreeFromDocs = (docs: any[], section: string): DocItem[] => {
     console.log('Building tree for section:', section, 'with docs:', docs.map(d => `${d.slug} (${d.title})`));
@@ -206,7 +351,7 @@ const Sidebar = ({ activeSection }: SidebarProps) => {
     );
   };
 
-  if (loading && !initialized) {
+  if (loading) {
     return (
       <div className="p-3">
         <div className="animate-pulse space-y-2">
@@ -235,7 +380,7 @@ const Sidebar = ({ activeSection }: SidebarProps) => {
           No documentation found in the repository.
           {(isAdmin || isEditor) && user && (
             <div className="mt-2">
-              <span className="text-xs">Add .md files to the /docs folder in your GitHub repository.</span>
+              <span className="text-xs">Add .md files to the docs folder in your GitHub repository.</span>
             </div>
           )}
         </div>
