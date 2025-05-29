@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
@@ -51,7 +52,7 @@ const fetchPublicGitHubContent = async (path: string): Promise<string> => {
   return data.content;
 };
 
-// Simple frontmatter parsing for public docs
+// Enhanced frontmatter parsing that properly removes frontmatter from content
 const parseFrontmatter = (content: string) => {
   // Normalize line endings
   const normalizedContent = content.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
