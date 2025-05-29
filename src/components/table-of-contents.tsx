@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { TableOfContents } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -16,6 +15,7 @@ interface TableOfContentsProps {
 const TableOfContentsComponent = ({ content }: TableOfContentsProps) => {
   const [tocItems, setTocItems] = useState<TOCItem[]>([]);
   const [activeId, setActiveId] = useState<string>("");
+  const [scrollProgress, setScrollProgress] = useState(0);
 
   useEffect(() => {
     // Extract headings from content
@@ -58,6 +58,14 @@ const TableOfContentsComponent = ({ content }: TableOfContentsProps) => {
       }
     );
 
+    // Set up scroll listener for progress tracking
+    const handleScroll = () => {
+      const scrollTop = window.scrollY;
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const scrollPercent = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
+      setScrollProgress(Math.min(100, Math.max(0, scrollPercent)));
+    };
+
     // Observe all headings with slight delay to ensure DOM is ready
     const observeHeadings = () => {
       const headings = document.querySelectorAll("h1[id], h2[id], h3[id], h4[id], h5[id], h6[id]");
@@ -70,10 +78,15 @@ const TableOfContentsComponent = ({ content }: TableOfContentsProps) => {
     };
 
     const timeoutId = setTimeout(observeHeadings, 100);
+    
+    // Add scroll listener
+    window.addEventListener('scroll', handleScroll);
+    handleScroll(); // Initial calculation
 
     return () => {
       clearTimeout(timeoutId);
       observer.disconnect();
+      window.removeEventListener('scroll', handleScroll);
     };
   }, [tocItems, activeId]);
 
@@ -107,9 +120,9 @@ const TableOfContentsComponent = ({ content }: TableOfContentsProps) => {
             
             {/* Progress highlight line */}
             <div 
-              className="absolute left-2 top-0 w-0.5 bg-primary transition-all duration-500 ease-out"
+              className="absolute left-2 top-0 w-0.5 bg-primary transition-all duration-300 ease-out"
               style={{
-                height: `${progressPercentage}%`
+                height: `${scrollProgress}%`
               }}
             ></div>
             
