@@ -3,19 +3,21 @@ title: "Untitled"
 order: 0
 ---
 
----
+*italic text*![alt text](image.jpg)[link text](url)---
 title: "Examples"
 description: "Real-world examples and use cases"
 order: 3
-icon: "ð¡"
+icon: "Ã°ÂÂÂ¡"
 tags: ["examples", "tutorials", "code"]
 ---
 
-# Examples
+# Examplesasdasd
 
 Explore practical examples and real-world implementations to get started quickly.
 
 ## Basic Examples
+
+
 
 ### Hello World
 The simplest possible implementation:
@@ -252,4 +254,4 @@ Ready to implement these examples? Check out:
 - [SDK Downloads](sdks) for language-specific libraries
 - [Getting Started](getting-started) for initial setup
 
-> **ð¡ Tip**: All examples include error handling and follow best practices for production use.
+> **Ã°ÂÂÂ¡ Tip**: All examples include error handling and follow best practices for production use.
