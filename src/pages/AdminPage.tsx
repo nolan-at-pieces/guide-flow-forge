@@ -48,6 +48,20 @@ const AdminPage = () => {
   console.log('AdminPage - isEditor:', isEditor);
   console.log('AdminPage - loading:', loading);
 
+  // Define handleSignOut early to avoid hoisting issues
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      navigate('/');
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   useEffect(() => {
     // Load existing config on mount
     if (config) {
@@ -254,18 +268,71 @@ const AdminPage = () => {
     setIsEditing(false);
   };
 
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-      navigate('/');
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-8">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center">Loading...</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show login prompt if not authenticated
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-8">
+        <div className="max-w-6xl mx-auto">
+          <Card>
+            <CardHeader>
+              <CardTitle>Authentication Required</CardTitle>
+              <CardDescription>You need to sign in to access the admin panel.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button onClick={() => navigate('/auth')}>
+                Go to Sign In
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // Show role requirement if user doesn't have admin/editor roles
+  if (!isAdmin && !isEditor) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-8">
+        <div className="max-w-6xl mx-auto">
+          <Card>
+            <CardHeader>
+              <CardTitle>Access Denied</CardTitle>
+              <CardDescription>
+                You need admin or editor privileges to access this page.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="text-sm text-gray-600">
+                <p>Current user: {user.email}</p>
+                <p>User ID: {user.id}</p>
+                <p>Admin status: {isAdmin ? 'Yes' : 'No'}</p>
+                <p>Editor status: {isEditor ? 'Yes' : 'No'}</p>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => navigate('/')}>
+                  Go Home
+                </Button>
+                <Button variant="outline" onClick={handleSignOut}>
+                  Sign Out
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">

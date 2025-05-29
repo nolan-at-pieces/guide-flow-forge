@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -141,7 +140,7 @@ const EditPage = () => {
     }
   };
 
-  const handlePublishToGithub = async (config: any) => {
+  const handlePublishToGithub = async () => {
     // This is already handled by the save function since we're using GitHub directly
     toast({
       title: "Success",
@@ -208,7 +207,7 @@ const EditPage = () => {
           <div className="flex items-center gap-2">
             <FileText className="w-4 h-4" />
             <span className="font-medium">
-              {isNewPage ? 'New Page' : `Editing: ${docContent.title || 'Untitled'}`}
+              {isNewPage ? 'New Page' : `Editing: ${docContent?.title || 'Untitled'}`}
             </span>
           </div>
           
@@ -227,16 +226,18 @@ const EditPage = () => {
       {/* Main Editor */}
       <div className="flex h-[calc(100vh-57px)]">
         <div className="flex-1">
-          <MarkdownEditor
-            initialContent={docContent.content}
-            initialTitle={docContent.title}
-            initialSlug={docContent.slug}
-            initialDescription={docContent.description}
-            initialTags={docContent.tags}
-            onSave={handleSave}
-            onPublishToGithub={handlePublishToGithub}
-            isNewPage={isNewPage}
-          />
+          {docContent && (
+            <MarkdownEditor
+              initialContent={docContent.content}
+              initialTitle={docContent.title}
+              initialSlug={docContent.slug}
+              initialDescription={docContent.description}
+              initialTags={docContent.tags}
+              onSave={handleSave}
+              onPublishToGithub={handlePublishToGithub}
+              isNewPage={isNewPage}
+            />
+          )}
         </div>
         
         {/* Right Sidebar - GitHub Integration Info */}
