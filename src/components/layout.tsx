@@ -9,9 +9,10 @@ import SearchDialog from "@/components/search-dialog";
 
 interface LayoutProps {
   children: React.ReactNode;
+  rightSidebar?: React.ReactNode;
 }
 
-const Layout = ({ children }: LayoutProps) => {
+const Layout = ({ children, rightSidebar }: LayoutProps) => {
   const [searchOpen, setSearchOpen] = useState(false);
   const { theme, setTheme } = useTheme();
 
@@ -97,8 +98,8 @@ const Layout = ({ children }: LayoutProps) => {
       </header>
 
       <div className="flex">
-        {/* Sidebar */}
-        <aside className="hidden md:flex w-80 shrink-0 border-r">
+        {/* Left Sidebar */}
+        <aside className="hidden md:flex w-64 shrink-0 border-r">
           <div className="sticky top-16 h-[calc(100vh-4rem)] w-full overflow-auto p-6">
             <Sidebar />
           </div>
@@ -110,6 +111,15 @@ const Layout = ({ children }: LayoutProps) => {
             {children}
           </div>
         </main>
+
+        {/* Right Sidebar (TOC) */}
+        {rightSidebar && (
+          <aside className="hidden xl:flex shrink-0 border-l">
+            <div className="sticky top-16 h-[calc(100vh-4rem)] p-6">
+              {rightSidebar}
+            </div>
+          </aside>
+        )}
       </div>
 
       <SearchDialog open={searchOpen} onOpenChange={setSearchOpen} />

@@ -1,9 +1,10 @@
-
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import MDXRenderer from "@/components/mdx-renderer";
+import TableOfContentsComponent from "@/components/table-of-contents";
+import Layout from "@/components/layout";
 
 interface DocMeta {
   title: string;
@@ -27,7 +28,6 @@ const DocsPage = () => {
       setError(null);
 
       try {
-        // Mock document loading - in a real app, this would load from the /docs folder
         const mockDocs: Record<string, { content: string; meta: DocMeta }> = {
           "getting-started": {
             content: `# Getting Started
@@ -128,7 +128,7 @@ const client = new MyProject({
 });
 \`\`\`
 
-## Methods
+## Core Methods
 
 ### \`init(options)\`
 
@@ -152,6 +152,20 @@ Retrieve data by ID.
 const data = await client.getData('example-id');
 console.log(data);
 \`\`\`
+
+## Advanced Features
+
+### Batch Operations
+
+Process multiple items at once.
+
+### Error Handling
+
+Handle errors gracefully in your application.
+
+### Rate Limiting
+
+Understand API rate limits and best practices.
             `,
             meta: {
               title: "API Reference",
@@ -182,39 +196,47 @@ console.log(data);
   }, [slug]);
 
   if (loading) {
-    return <div className="animate-pulse">Loading...</div>;
+    return (
+      <Layout>
+        <div className="animate-pulse">Loading...</div>
+      </Layout>
+    );
   }
 
   if (error) {
     return (
-      <Alert variant="destructive">
-        <AlertDescription>{error}</AlertDescription>
-      </Alert>
+      <Layout>
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      </Layout>
     );
   }
 
   return (
-    <article className="prose prose-slate dark:prose-invert max-w-none">
-      {docMeta && (
-        <div className="not-prose mb-8">
-          <div className="flex items-center gap-2 mb-2">
-            {docMeta.icon && <span className="text-2xl">{docMeta.icon}</span>}
-            <h1 className="text-3xl font-bold m-0">{docMeta.title}</h1>
-          </div>
-          {docMeta.description && (
-            <p className="text-lg text-muted-foreground mb-4">{docMeta.description}</p>
-          )}
-          {docMeta.tags && (
-            <div className="flex gap-2">
-              {docMeta.tags.map(tag => (
-                <Badge key={tag} variant="secondary">{tag}</Badge>
-              ))}
+    <Layout rightSidebar={<TableOfContentsComponent content={docContent} />}>
+      <article className="prose prose-slate dark:prose-invert max-w-none">
+        {docMeta && (
+          <div className="not-prose mb-8">
+            <div className="flex items-center gap-2 mb-2">
+              {docMeta.icon && <span className="text-2xl">{docMeta.icon}</span>}
+              <h1 className="text-3xl font-bold m-0">{docMeta.title}</h1>
             </div>
-          )}
-        </div>
-      )}
-      <MDXRenderer content={docContent} />
-    </article>
+            {docMeta.description && (
+              <p className="text-lg text-muted-foreground mb-4">{docMeta.description}</p>
+            )}
+            {docMeta.tags && (
+              <div className="flex gap-2">
+                {docMeta.tags.map(tag => (
+                  <Badge key={tag} variant="secondary">{tag}</Badge>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+        <MDXRenderer content={docContent} />
+      </article>
+    </Layout>
   );
 };
 

@@ -8,12 +8,24 @@ interface MDXRendererProps {
 
 const MDXRenderer = ({ content }: MDXRendererProps) => {
   const processedContent = useMemo(() => {
-    // Enhanced markdown-to-HTML conversion
+    // Enhanced markdown-to-HTML conversion with IDs for headings
     let html = content
-      .replace(/^# (.*$)/gm, '<h1 class="text-4xl font-bold mb-6 mt-8 first:mt-0 scroll-m-20">$1</h1>')
-      .replace(/^## (.*$)/gm, '<h2 class="text-3xl font-semibold mb-4 mt-8 scroll-m-20 border-b pb-2">$1</h2>')
-      .replace(/^### (.*$)/gm, '<h3 class="text-2xl font-medium mb-3 mt-6 scroll-m-20">$1</h3>')
-      .replace(/^#### (.*$)/gm, '<h4 class="text-xl font-medium mb-2 mt-4 scroll-m-20">$1</h4>')
+      .replace(/^# (.*$)/gm, (match, title) => {
+        const id = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+        return `<h1 id="${id}" class="text-4xl font-bold mb-6 mt-8 first:mt-0 scroll-m-20">${title}</h1>`;
+      })
+      .replace(/^## (.*$)/gm, (match, title) => {
+        const id = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+        return `<h2 id="${id}" class="text-3xl font-semibold mb-4 mt-8 scroll-m-20 border-b pb-2">${title}</h2>`;
+      })
+      .replace(/^### (.*$)/gm, (match, title) => {
+        const id = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+        return `<h3 id="${id}" class="text-2xl font-medium mb-3 mt-6 scroll-m-20">${title}</h3>`;
+      })
+      .replace(/^#### (.*$)/gm, (match, title) => {
+        const id = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+        return `<h4 id="${id}" class="text-xl font-medium mb-2 mt-4 scroll-m-20">${title}</h4>`;
+      })
       .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold">$1</strong>')
       .replace(/\*(.*?)\*/g, '<em class="italic">$1</em>')
       .replace(/`([^`]+)`/g, '<code class="bg-muted px-2 py-1 rounded text-sm font-mono">$1</code>')
@@ -28,17 +40,13 @@ const MDXRenderer = ({ content }: MDXRendererProps) => {
       </div>`;
     });
 
-    // Handle unordered lists
     html = html.replace(/^- (.+)$/gm, '<li class="mb-2">$1</li>');
     html = html.replace(/(<li.*<\/li>)/s, '<ul class="list-disc pl-6 mb-4 space-y-2">$1</ul>');
 
-    // Handle ordered lists
     html = html.replace(/^\d+\. (.+)$/gm, '<li class="mb-2">$1</li>');
 
-    // Handle paragraphs
     html = html.replace(/^(?!<[h1-6]|<pre|<ul|<ol|<li|<div)(.+)$/gm, '<p class="mb-4 leading-7 text-muted-foreground">$1</p>');
 
-    // Handle blockquotes
     html = html.replace(/^> (.+)$/gm, '<blockquote class="border-l-4 border-primary/20 pl-4 italic text-muted-foreground mb-4">$1</blockquote>');
 
     return html;

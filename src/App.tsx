@@ -11,12 +11,14 @@ import DocsPage from "@/pages/DocsPage";
 const queryClient = new QueryClient();
 
 const AppContent = () => (
-  <Layout>
-    <Routes>
-      <Route path="/" element={<Home />} />
-      <Route path="/docs/*" element={<DocsPage />} />
-    </Routes>
-  </Layout>
+  <Routes>
+    <Route path="/" element={
+      <Layout>
+        <Home />
+      </Layout>
+    } />
+    <Route path="/docs/*" element={<DocsPage />} />
+  </Routes>
 );
 
 const App = () => (
