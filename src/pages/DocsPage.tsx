@@ -13,7 +13,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { useGitHubDocs, useGitHubDocsList } from "@/hooks/useGitHubDocs";
 import { DocContent } from "@/services/githubApi";
-
 interface DocMeta {
   title: string;
   description?: string;
@@ -21,25 +20,31 @@ interface DocMeta {
   icon?: string;
   tags?: string[];
 }
-
 const DocsPage = () => {
   const params = useParams();
   const location = useLocation();
-  
+
   // Use the route config to extract slug
   const slug = routeConfig.extractSlug(location.pathname) || "getting-started";
-  
   const [docContent, setDocContent] = useState("");
   const [docMeta, setDocMeta] = useState<DocMeta | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
-
-  const { user, isAdmin, isEditor } = useAuth();
+  const {
+    user,
+    isAdmin,
+    isEditor
+  } = useAuth();
   const navigate = useNavigate();
-  const { service, isConfigured } = useGitHubDocs();
-  const { docs, initialized } = useGitHubDocsList();
-
+  const {
+    service,
+    isConfigured
+  } = useGitHubDocs();
+  const {
+    docs,
+    initialized
+  } = useGitHubDocsList();
   useEffect(() => {
     const loadDoc = async () => {
       setLoading(true);
@@ -49,7 +54,6 @@ const DocsPage = () => {
       // If GitHub is configured and docs are loaded, get from cache
       if (isConfigured && service && initialized && docs.length > 0) {
         const doc = docs.find(d => d.slug === slug);
-        
         if (doc) {
           console.log('Loading doc from cache:', doc);
           setDocContent(doc.content);
@@ -58,7 +62,7 @@ const DocsPage = () => {
             description: doc.description,
             order: doc.order || 0,
             icon: doc.icon,
-            tags: doc.tags,
+            tags: doc.tags
           });
         } else {
           setNotFound(true);
@@ -71,7 +75,6 @@ const DocsPage = () => {
       if (isConfigured && service && !initialized) {
         try {
           const doc = await service.getDocBySlug(slug);
-          
           if (doc) {
             console.log('Loading doc directly from GitHub:', doc);
             setDocContent(doc.content);
@@ -80,7 +83,7 @@ const DocsPage = () => {
               description: doc.description,
               order: doc.order || 0,
               icon: doc.icon,
-              tags: doc.tags,
+              tags: doc.tags
             });
           } else {
             setNotFound(true);
@@ -97,7 +100,10 @@ const DocsPage = () => {
 
       // Fallback to mock data when GitHub is not configured
       try {
-        const mockDocs: Record<string, { content: string; meta: DocMeta }> = {
+        const mockDocs: Record<string, {
+          content: string;
+          meta: DocMeta;
+        }> = {
           "getting-started": {
             content: `# Getting Started
 
@@ -251,13 +257,11 @@ Understand API rate limits and best practices.
             }
           }
         };
-
         const mockDoc = mockDocs[slug];
         if (!mockDoc) {
           setNotFound(true);
           return;
         }
-
         setDocContent(mockDoc.content);
         setDocMeta(mockDoc.meta);
       } catch (err) {
@@ -267,36 +271,25 @@ Understand API rate limits and best practices.
         setLoading(false);
       }
     };
-
     loadDoc();
   }, [slug, service, isConfigured, docs, initialized]);
-
   if (loading) {
-    return (
-      <Layout>
+    return <Layout>
         <div className="animate-pulse">Loading...</div>
-      </Layout>
-    );
+      </Layout>;
   }
-
   if (notFound) {
-    return (
-      <Layout>
+    return <Layout>
         <DocNotFound />
-      </Layout>
-    );
+      </Layout>;
   }
-
   if (error) {
     return <DocError error={error} />;
   }
-
-  return (
-    <Layout rightSidebar={<TableOfContentsComponent content={docContent} />}>
+  return <Layout rightSidebar={<TableOfContentsComponent content={docContent} />}>
       <article className="prose prose-slate dark:prose-invert max-w-none">
         {/* Configuration Notice for Admins - Only show to logged in admins/editors */}
-        {!isConfigured && (isAdmin || isEditor) && user && (
-          <div className="not-prose mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+        {!isConfigured && (isAdmin || isEditor) && user && <div className="not-prose mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-medium text-yellow-800">GitHub Not Configured</h3>
@@ -304,53 +297,32 @@ Understand API rate limits and best practices.
                   Configure GitHub integration in the admin panel to load docs from your repository.
                 </p>
               </div>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => navigate('/admin')}
-              >
+              <Button variant="outline" size="sm" onClick={() => navigate('/admin')}>
                 Configure
               </Button>
             </div>
-          </div>
-        )}
+          </div>}
 
         {/* Edit Button for Admins/Editors - Only show to logged in admins/editors */}
-        {(isAdmin || isEditor) && user && (
-          <div className="not-prose mb-4 flex justify-end">
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => navigate(`/edit/${slug}`)}
-            >
+        {(isAdmin || isEditor) && user && <div className="not-prose mb-4 flex justify-end">
+            <Button variant="outline" size="sm" onClick={() => navigate(`/edit/${slug}`)}>
               <Edit className="w-4 h-4 mr-2" />
               Edit Page
             </Button>
-          </div>
-        )}
+          </div>}
         
-        {docMeta && (
-          <div className="not-prose mb-8">
+        {docMeta && <div className="not-prose mb-8">
             <div className="flex items-center gap-2 mb-2">
               {docMeta.icon && <span className="text-2xl">{docMeta.icon}</span>}
-              <h1 className="text-3xl font-bold m-0">{docMeta.title}</h1>
+              
             </div>
-            {docMeta.description && (
-              <p className="text-lg text-muted-foreground mb-4">{docMeta.description}</p>
-            )}
-            {docMeta.tags && (
-              <div className="flex gap-2">
-                {docMeta.tags.map(tag => (
-                  <Badge key={tag} variant="secondary">{tag}</Badge>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+            {docMeta.description && <p className="text-lg text-muted-foreground mb-4">{docMeta.description}</p>}
+            {docMeta.tags && <div className="flex gap-2">
+                {docMeta.tags.map(tag => <Badge key={tag} variant="secondary">{tag}</Badge>)}
+              </div>}
+          </div>}
         <MDXRenderer content={docContent} />
       </article>
-    </Layout>
-  );
+    </Layout>;
 };
-
 export default DocsPage;
