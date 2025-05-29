@@ -16,23 +16,21 @@ const sections = [
 const TopNav = ({ activeSection, onSectionChange }: TopNavProps) => {
   return (
     <div className="border-b bg-background">
-      <div className="flex items-center px-6 py-2">
+      <div className="flex items-center px-6">
         <nav className="flex space-x-1">
           {sections.map((section) => (
-            <Button
+            <button
               key={section.id}
-              variant={activeSection === section.id ? "default" : "ghost"}
-              size="sm"
               onClick={() => onSectionChange(section.id)}
               className={cn(
-                "text-sm font-medium transition-colors",
+                "relative px-4 py-3 text-sm font-medium transition-colors border-b-2 border-transparent",
                 activeSection === section.id 
-                  ? "bg-primary text-primary-foreground" 
+                  ? "text-primary border-primary" 
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
               {section.label}
-            </Button>
+            </button>
           ))}
         </nav>
       </div>
