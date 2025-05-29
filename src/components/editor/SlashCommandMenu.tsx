@@ -7,7 +7,7 @@ import {
   List, ListOrdered, Quote, 
   Code, Image, Link, 
   Table, AlertCircle, CheckSquare,
-  Separator
+  Minus
 } from 'lucide-react';
 
 interface SlashCommand {
@@ -146,7 +146,7 @@ const commands: SlashCommand[] = [
     label: 'Divider',
     description: 'Horizontal line',
     category: 'Components',
-    icon: Separator,
+    icon: Minus,
     template: '---\n\n'
   },
   {
