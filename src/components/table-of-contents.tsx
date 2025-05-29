@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { TableOfContents } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -116,11 +117,11 @@ const TableOfContentsComponent = ({ content }: TableOfContentsProps) => {
           </div>
           <nav className="relative">
             {/* Background line */}
-            <div className="absolute left-2 top-0 bottom-0 w-0.5 bg-border"></div>
+            <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-border"></div>
             
             {/* Progress highlight line */}
             <div 
-              className="absolute left-2 top-0 w-0.5 bg-primary transition-all duration-300 ease-out"
+              className="absolute left-0 top-0 w-0.5 bg-primary transition-all duration-300 ease-out"
               style={{
                 height: `${scrollProgress}%`
               }}
@@ -135,15 +136,15 @@ const TableOfContentsComponent = ({ content }: TableOfContentsProps) => {
                     <button
                       onClick={() => scrollToHeading(item.id)}
                       className={cn(
-                        "block w-full text-left text-sm py-2 pl-6 pr-4 rounded-r transition-all duration-200 hover:bg-muted/50 relative",
+                        "block w-full text-left text-sm py-2 pl-4 pr-4 rounded-r transition-all duration-200 hover:bg-muted/50 relative ml-2",
                         isActive 
                           ? "text-primary font-medium bg-primary/10" 
                           : "text-muted-foreground hover:text-foreground",
                         item.level === 1 && "font-medium",
-                        item.level === 2 && "pl-8",
-                        item.level === 3 && "pl-10 text-xs",
-                        item.level === 4 && "pl-12 text-xs",
-                        item.level >= 5 && "pl-14 text-xs"
+                        item.level === 2 && "pl-6",
+                        item.level === 3 && "pl-8 text-xs",
+                        item.level === 4 && "pl-10 text-xs",
+                        item.level >= 5 && "pl-12 text-xs"
                       )}
                     >
                       {item.text}
