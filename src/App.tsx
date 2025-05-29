@@ -27,7 +27,7 @@ const AppContent = () => {
       <Route path="/auth" element={<AuthPage />} />
       <Route path="/admin" element={<AdminPage />} />
       <Route path="/edit/:slug" element={<EditPage />} />
-      <Route path="/*" element={<DocsPage />} />
+      <Route path="*" element={<DocsPage />} />
     </Routes>
   );
 };
