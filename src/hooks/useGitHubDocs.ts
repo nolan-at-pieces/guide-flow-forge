@@ -1,6 +1,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { GitHubDocsService, createGitHubService, GitHubConfig, DocContent } from '@/services/githubApi';
+import { GitHubDocsCache } from '@/services/githubDocsCache';
 
 interface UseGitHubDocsReturn {
   service: GitHubDocsService | null;
@@ -37,6 +38,8 @@ export const useGitHubDocs = (): UseGitHubDocsReturn => {
       setConfig(newConfig);
       setService(createGitHubService(newConfig));
       setError(null);
+      // Clear cache when config changes
+      GitHubDocsCache.clearCache();
     } catch (err) {
       console.error('Error saving GitHub config:', err);
       setError('Failed to save GitHub configuration');
@@ -48,6 +51,7 @@ export const useGitHubDocs = (): UseGitHubDocsReturn => {
     setConfig(null);
     setService(null);
     setError(null);
+    GitHubDocsCache.clearCache();
   }, []);
 
   return {
@@ -70,12 +74,23 @@ export const useGitHubDocsList = () => {
   const fetchDocs = useCallback(async () => {
     if (!service) return;
 
+    // Check cache first
+    const cachedDocs = GitHubDocsCache.getCachedDocs();
+    if (cachedDocs) {
+      console.log('Loading docs from cache');
+      setDocs(cachedDocs);
+      setInitialized(true);
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
       const allDocs = await service.getAllDocs();
       setDocs(allDocs);
       setInitialized(true);
+      // Cache the results
+      GitHubDocsCache.setCachedDocs(allDocs);
     } catch (err) {
       console.error('Error fetching docs:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch documents');
@@ -90,8 +105,8 @@ export const useGitHubDocsList = () => {
 
     const handleUpdate = () => {
       console.log('Docs updated from GitHub, refreshing...');
-      const cachedDocs = service.getCachedDocs();
-      setDocs(cachedDocs);
+      GitHubDocsCache.clearCache();
+      fetchDocs();
     };
 
     service.addListener(handleUpdate);
@@ -104,7 +119,7 @@ export const useGitHubDocsList = () => {
         setInitialized(true);
       }
     } else {
-      // If not initialized, trigger fetch
+      // If not initialized, trigger fetch (which will check cache first)
       fetchDocs();
     }
 
