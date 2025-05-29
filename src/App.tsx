@@ -10,18 +10,22 @@ import DocsPage from "@/pages/DocsPage";
 
 const queryClient = new QueryClient();
 
+const AppContent = () => (
+  <Layout>
+    <Routes>
+      <Route path="/" element={<Home />} />
+      <Route path="/docs/*" element={<DocsPage />} />
+    </Routes>
+  </Layout>
+);
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider defaultTheme="system" storageKey="docs-ui-theme">
       <TooltipProvider>
         <Toaster />
         <BrowserRouter>
-          <Layout>
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/docs/*" element={<DocsPage />} />
-            </Routes>
-          </Layout>
+          <AppContent />
         </BrowserRouter>
       </TooltipProvider>
     </ThemeProvider>
