@@ -71,57 +71,60 @@ export class GitHubDocsService {
   }
 
   private parseFrontmatter(content: string): { metadata: DocMetadata; content: string } {
-    console.log('=== FRONTMATTER PARSING DEBUG ===');
-    console.log('Original content length:', content.length);
-    console.log('Content starts with:', content.substring(0, 200));
-    
-    // Handle different line endings and ensure we capture frontmatter properly
+    // Normalize line endings
     const normalizedContent = content.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
     
-    // Check if content starts with frontmatter
+    // Check if content starts with frontmatter delimiter
     if (!normalizedContent.startsWith('---\n')) {
-      console.log('Content does not start with frontmatter delimiter');
       return {
         metadata: { title: 'Untitled', slug: '' },
         content: normalizedContent.trim()
       };
     }
     
-    // Find the end of frontmatter - look for second ---
-    const contentAfterFirstDelimiter = normalizedContent.substring(4); // Skip first "---\n"
-    const endDelimiterIndex = contentAfterFirstDelimiter.indexOf('\n---\n');
+    // Find the closing frontmatter delimiter
+    const lines = normalizedContent.split('\n');
+    let frontmatterEndIndex = -1;
     
-    if (endDelimiterIndex === -1) {
-      console.log('Could not find closing frontmatter delimiter');
+    // Start from line 1 (skip the opening ---)
+    for (let i = 1; i < lines.length; i++) {
+      if (lines[i].trim() === '---') {
+        frontmatterEndIndex = i;
+        break;
+      }
+    }
+    
+    if (frontmatterEndIndex === -1) {
       return {
         metadata: { title: 'Untitled', slug: '' },
         content: normalizedContent.trim()
       };
     }
     
-    const frontmatterSection = contentAfterFirstDelimiter.substring(0, endDelimiterIndex);
-    const contentAfterFrontmatter = contentAfterFirstDelimiter.substring(endDelimiterIndex + 5); // Skip "\n---\n"
+    // Extract frontmatter section (between the --- markers)
+    const frontmatterLines = lines.slice(1, frontmatterEndIndex);
     
-    console.log('Frontmatter section extracted:', frontmatterSection);
-    console.log('Content after frontmatter starts with:', contentAfterFrontmatter.substring(0, 100));
-    console.log('Content after frontmatter length:', contentAfterFrontmatter.length);
+    // Extract content after frontmatter (skip the closing --- and any empty lines)
+    let contentStartIndex = frontmatterEndIndex + 1;
+    while (contentStartIndex < lines.length && lines[contentStartIndex].trim() === '') {
+      contentStartIndex++;
+    }
+    const contentLines = lines.slice(contentStartIndex);
+    const cleanContent = contentLines.join('\n').trim();
     
+    // Parse the frontmatter YAML
     const metadata: any = {};
-    
-    // Parse YAML-style frontmatter
-    const lines = frontmatterSection.split('\n');
     let currentKey = '';
     let inArray = false;
     let arrayItems: string[] = [];
     
-    for (const line of lines) {
+    for (const line of frontmatterLines) {
       const trimmedLine = line.trim();
       if (!trimmedLine) continue;
       
       // Handle array continuation
       if (inArray && trimmedLine.startsWith('- ')) {
         const item = trimmedLine.substring(2).trim();
-        // Remove quotes if present
         arrayItems.push(item.replace(/^["']|["']$/g, ''));
         continue;
       } else if (inArray && !trimmedLine.startsWith('- ')) {
@@ -173,13 +176,10 @@ export class GitHubDocsService {
     if (inArray && arrayItems.length > 0) {
       metadata[currentKey] = arrayItems;
     }
-
-    console.log('Parsed metadata:', metadata);
     
-    // Return ONLY the markdown content without any frontmatter
     return {
       metadata: metadata as DocMetadata,
-      content: contentAfterFrontmatter.trim() // This should NOT contain frontmatter
+      content: cleanContent
     };
   }
 

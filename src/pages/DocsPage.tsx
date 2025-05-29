@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
@@ -54,8 +53,10 @@ const fetchPublicGitHubContent = async (path: string): Promise<string> => {
 
 // Simple frontmatter parsing for public docs
 const parseFrontmatter = (content: string) => {
+  // Normalize line endings
   const normalizedContent = content.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
   
+  // Check if content starts with frontmatter delimiter
   if (!normalizedContent.startsWith('---\n')) {
     return {
       metadata: { title: 'Untitled', order: 0 },
@@ -63,49 +64,104 @@ const parseFrontmatter = (content: string) => {
     };
   }
   
-  const contentAfterFirstDelimiter = normalizedContent.substring(4);
-  const endDelimiterIndex = contentAfterFirstDelimiter.indexOf('\n---\n');
+  // Find the closing frontmatter delimiter
+  const lines = normalizedContent.split('\n');
+  let frontmatterEndIndex = -1;
   
-  if (endDelimiterIndex === -1) {
+  // Start from line 1 (skip the opening ---)
+  for (let i = 1; i < lines.length; i++) {
+    if (lines[i].trim() === '---') {
+      frontmatterEndIndex = i;
+      break;
+    }
+  }
+  
+  if (frontmatterEndIndex === -1) {
     return {
       metadata: { title: 'Untitled', order: 0 },
       content: normalizedContent.trim()
     };
   }
   
-  const frontmatterSection = contentAfterFirstDelimiter.substring(0, endDelimiterIndex);
-  const contentAfterFrontmatter = contentAfterFirstDelimiter.substring(endDelimiterIndex + 5);
+  // Extract frontmatter section (between the --- markers)
+  const frontmatterLines = lines.slice(1, frontmatterEndIndex);
   
+  // Extract content after frontmatter (skip the closing --- and any empty lines)
+  let contentStartIndex = frontmatterEndIndex + 1;
+  while (contentStartIndex < lines.length && lines[contentStartIndex].trim() === '') {
+    contentStartIndex++;
+  }
+  const contentLines = lines.slice(contentStartIndex);
+  const cleanContent = contentLines.join('\n').trim();
+  
+  // Parse the frontmatter
   const metadata: any = { order: 0 };
+  let currentKey = '';
+  let inArray = false;
+  let arrayItems: string[] = [];
   
-  const lines = frontmatterSection.split('\n');
-  for (const line of lines) {
+  for (const line of frontmatterLines) {
     const trimmedLine = line.trim();
     if (!trimmedLine) continue;
     
+    // Handle array continuation
+    if (inArray && trimmedLine.startsWith('- ')) {
+      const item = trimmedLine.substring(2).trim();
+      arrayItems.push(item.replace(/^["']|["']$/g, ''));
+      continue;
+    } else if (inArray && !trimmedLine.startsWith('- ')) {
+      // End of array
+      metadata[currentKey] = arrayItems;
+      inArray = false;
+      arrayItems = [];
+    }
+    
+    // Handle key-value pairs
     const colonIndex = trimmedLine.indexOf(':');
     if (colonIndex > 0) {
       const key = trimmedLine.substring(0, colonIndex).trim();
       let value = trimmedLine.substring(colonIndex + 1).trim();
       
+      if (!value) {
+        // This might be the start of an array
+        currentKey = key;
+        inArray = true;
+        arrayItems = [];
+        continue;
+      }
+      
+      // Handle inline arrays [item1, item2]
+      if (value.startsWith('[') && value.endsWith(']')) {
+        const arrayContent = value.slice(1, -1);
+        if (arrayContent.trim()) {
+          metadata[key] = arrayContent.split(',').map(item => 
+            item.trim().replace(/^["']|["']$/g, '')
+          );
+        } else {
+          metadata[key] = [];
+        }
+        continue;
+      }
+      
+      // Remove quotes and handle special values
       value = value.replace(/^["']|["']$/g, '');
       
       if (key === 'order') {
         metadata[key] = parseInt(value) || 0;
-      } else if (key === 'tags' && value.startsWith('[') && value.endsWith(']')) {
-        const arrayContent = value.slice(1, -1);
-        metadata[key] = arrayContent ? arrayContent.split(',').map(item => 
-          item.trim().replace(/^["']|["']$/g, '')
-        ) : [];
       } else {
         metadata[key] = value;
       }
     }
   }
   
+  // Handle any remaining array
+  if (inArray && arrayItems.length > 0) {
+    metadata[currentKey] = arrayItems;
+  }
+  
   return {
     metadata,
-    content: contentAfterFrontmatter.trim()
+    content: cleanContent
   };
 };
 
@@ -140,7 +196,7 @@ const DocsPage = () => {
         
         console.log('Successfully loaded from public GitHub:', slug);
         console.log('Parsed metadata:', metadata);
-        console.log('Content length after frontmatter removal:', markdownContent.length);
+        console.log('Clean content (no frontmatter):', markdownContent.substring(0, 200));
         
         setDocContent(markdownContent);
         setDocMeta({
