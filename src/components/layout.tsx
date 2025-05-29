@@ -14,6 +14,7 @@ interface LayoutProps {
 const Layout = ({ children, rightSidebar }: LayoutProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
+  const [activeSection, setActiveSection] = useState("products");
 
   useEffect(() => {
     const checkMobile = () => {
@@ -29,6 +30,10 @@ const Layout = ({ children, rightSidebar }: LayoutProps) => {
   }, []);
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
+
+  const handleSectionChange = (section: string) => {
+    setActiveSection(section);
+  };
 
   return (
     <div className="min-h-screen bg-background flex w-full">
@@ -63,9 +68,9 @@ const Layout = ({ children, rightSidebar }: LayoutProps) => {
         )}
       >
         <div className="flex flex-col h-full">
-          <TopNav />
+          <TopNav activeSection={activeSection} onSectionChange={handleSectionChange} />
           <div className="flex-1 overflow-auto">
-            <Sidebar activeSection="products" />
+            <Sidebar activeSection={activeSection} />
           </div>
         </div>
       </aside>
