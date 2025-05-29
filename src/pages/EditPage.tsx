@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -149,10 +148,6 @@ const EditPage = () => {
     });
   };
 
-  const handleBack = () => {
-    navigate(-1);
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -189,15 +184,10 @@ const EditPage = () => {
             <CardDescription>The page you're looking for doesn't exist.</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex gap-2">
-              <Button onClick={handleBack} variant="outline">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Go Back
-              </Button>
-              <Button onClick={() => navigate('/')}>
-                Go Home
-              </Button>
-            </div>
+            <Button onClick={() => navigate('/')}>
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Go Home
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -206,21 +196,73 @@ const EditPage = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Top Navigation */}
+      <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="flex h-14 items-center px-4">
+          <Button variant="ghost" onClick={() => navigate('/')} className="mr-4">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Docs
+          </Button>
+          
+          <div className="flex items-center gap-2">
+            <FileText className="w-4 h-4" />
+            <span className="font-medium">
+              {isNewPage ? 'New Page' : `Editing: ${docContent?.title || 'Untitled'}`}
+            </span>
+          </div>
+          
+          <div className="ml-auto flex items-center gap-2">
+            <Button variant="outline" onClick={() => navigate('/edit/new')}>
+              <Plus className="w-4 h-4 mr-2" />
+              New Page
+            </Button>
+            <Button variant="outline" onClick={() => navigate('/admin')}>
+              Admin Panel
+            </Button>
+          </div>
+        </div>
+      </div>
+
       {/* Main Editor */}
-      <div className="h-screen">
-        {docContent && (
-          <MarkdownEditor
-            initialContent={docContent.content}
-            initialTitle={docContent.title}
-            initialSlug={docContent.slug}
-            initialDescription={docContent.description}
-            initialTags={docContent.tags}
-            onSave={handleSave}
-            onPublishToGithub={handlePublishToGithub}
-            onBack={handleBack}
-            isNewPage={isNewPage}
-          />
-        )}
+      <div className="flex h-[calc(100vh-57px)]">
+        <div className="flex-1">
+          {docContent && (
+            <MarkdownEditor
+              initialContent={docContent.content}
+              initialTitle={docContent.title}
+              initialSlug={docContent.slug}
+              initialDescription={docContent.description}
+              initialTags={docContent.tags}
+              onSave={handleSave}
+              onPublishToGithub={handlePublishToGithub}
+              isNewPage={isNewPage}
+            />
+          )}
+        </div>
+        
+        {/* Right Sidebar - GitHub Integration Info */}
+        <div className="w-80 border-l bg-muted/50 p-4 overflow-auto">
+          <div className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">GitHub Integration</CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm space-y-2">
+                <p className="text-muted-foreground">
+                  Changes are automatically saved to your GitHub repository when you click Save.
+                </p>
+                <div className="p-3 bg-green-50 border border-green-200 rounded">
+                  <p className="text-green-800 font-medium">✓ Connected to GitHub</p>
+                  <p className="text-green-700 text-xs mt-1">
+                    All changes will be committed directly to your repository.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <GitHubIntegration onPublish={handlePublishToGithub} />
+          </div>
+        </div>
       </div>
     </div>
   );

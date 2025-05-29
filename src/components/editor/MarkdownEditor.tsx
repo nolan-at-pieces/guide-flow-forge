@@ -3,10 +3,10 @@ import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
-import { Save, Eye, EyeOff, Github, ArrowLeft, FileText, Code, Type } from 'lucide-react';
+import { Save, Eye, EyeOff, Github, Plus, Settings } from 'lucide-react';
 import SlashCommandMenu from './SlashCommandMenu';
 import MDXRenderer from '@/components/mdx-renderer';
 
@@ -24,7 +24,6 @@ interface MarkdownEditorProps {
     tags?: string[];
   }) => void;
   onPublishToGithub?: () => void;
-  onBack?: () => void;
   isNewPage?: boolean;
 }
 
@@ -36,7 +35,6 @@ const MarkdownEditor = ({
   initialTags = [],
   onSave,
   onPublishToGithub,
-  onBack,
   isNewPage = false
 }: MarkdownEditorProps) => {
   const { toast } = useToast();
@@ -128,28 +126,17 @@ const MarkdownEditor = ({
       {/* Header Controls */}
       <div className="flex items-center justify-between p-4 border-b bg-background">
         <div className="flex items-center gap-4">
-          {onBack && (
-            <Button onClick={onBack} variant="outline" size="sm">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back
-            </Button>
-          )}
-          <div className="flex items-center gap-2">
-            <FileText className="w-4 h-4" />
-            <span className="font-medium">
-              {isNewPage ? 'New Page' : `Editing: ${title || 'Untitled'}`}
-            </span>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
           <Button onClick={() => setShowPreview(!showPreview)} variant="outline" size="sm">
-            {showPreview ? <Code className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            {showPreview ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             {showPreview ? 'Edit' : 'Preview'}
           </Button>
+          <Badge variant="secondary">Edit Mode</Badge>
+        </div>
+        <div className="flex items-center gap-2">
           {onPublishToGithub && (
             <Button onClick={onPublishToGithub} variant="outline" size="sm">
               <Github className="w-4 h-4 mr-2" />
-              Publish
+              Publish to GitHub
             </Button>
           )}
           <Button onClick={handleSave} size="sm">
@@ -200,92 +187,23 @@ const MarkdownEditor = ({
       {/* Editor/Preview Area */}
       <div className="flex-1 flex">
         {!showPreview ? (
-          <div className="flex w-full">
-            {/* Main Editor */}
-            <div className="flex-1 relative">
-              <Textarea
-                ref={textareaRef}
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Start typing... Use / for commands"
-                className="w-full h-full resize-none border-0 focus:ring-0 font-mono text-sm leading-relaxed"
-                style={{ minHeight: 'calc(100vh - 300px)' }}
+          <div className="w-full relative">
+            <Textarea
+              ref={textareaRef}
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Start typing... Use / for commands"
+              className="w-full h-full resize-none border-0 focus:ring-0 font-mono text-sm leading-relaxed"
+              style={{ minHeight: 'calc(100vh - 300px)' }}
+            />
+            {showSlashMenu && (
+              <SlashCommandMenu
+                position={slashMenuPosition}
+                onSelect={insertAtCursor}
+                onClose={() => setShowSlashMenu(false)}
               />
-              {showSlashMenu && (
-                <SlashCommandMenu
-                  position={slashMenuPosition}
-                  onSelect={insertAtCursor}
-                  onClose={() => setShowSlashMenu(false)}
-                />
-              )}
-            </div>
-            
-            {/* Markdown Cheatsheet */}
-            <div className="w-80 border-l bg-muted/30 p-4 overflow-auto">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <Type className="w-4 h-4" />
-                    Markdown Cheatsheet
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="text-xs space-y-3">
-                  <div>
-                    <div className="font-medium mb-1">Headings</div>
-                    <div className="font-mono text-muted-foreground">
-                      # H1<br/>
-                      ## H2<br/>
-                      ### H3
-                    </div>
-                  </div>
-                  <div>
-                    <div className="font-medium mb-1">Text Formatting</div>
-                    <div className="font-mono text-muted-foreground">
-                      **bold**<br/>
-                      *italic*<br/>
-                      `code`
-                    </div>
-                  </div>
-                  <div>
-                    <div className="font-medium mb-1">Lists</div>
-                    <div className="font-mono text-muted-foreground">
-                      - Item 1<br/>
-                      - Item 2<br/>
-                      <br/>
-                      1. Numbered<br/>
-                      2. List
-                    </div>
-                  </div>
-                  <div>
-                    <div className="font-medium mb-1">Links & Images</div>
-                    <div className="font-mono text-muted-foreground">
-                      [link](url)<br/>
-                      ![image](url)
-                    </div>
-                  </div>
-                  <div>
-                    <div className="font-medium mb-1">Code Block</div>
-                    <div className="font-mono text-muted-foreground">
-                      ```language<br/>
-                      code here<br/>
-                      ```
-                    </div>
-                  </div>
-                  <div>
-                    <div className="font-medium mb-1">Quote</div>
-                    <div className="font-mono text-muted-foreground">
-                      > Quote text
-                    </div>
-                  </div>
-                  <div className="pt-2 border-t">
-                    <Badge variant="secondary" className="text-xs">
-                      Tip: Type "/" for quick insert
-                    </Badge>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+            )}
           </div>
         ) : (
           <div className="w-full p-6 overflow-auto">
