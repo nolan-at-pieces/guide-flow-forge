@@ -32,7 +32,7 @@ const Layout = ({ children, rightSidebar }: LayoutProps) => {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="flex h-16 items-center px-6">
+        <div className="flex h-16 items-center justify-between px-6">
           <div className="flex items-center space-x-4 lg:space-x-6">
             <Sheet>
               <SheetTrigger asChild>
@@ -68,7 +68,7 @@ const Layout = ({ children, rightSidebar }: LayoutProps) => {
             </a>
           </div>
 
-          <div className="flex-1 flex items-center justify-between space-x-4 ml-6">
+          <div className="flex-1 flex justify-center px-6">
             <div className="w-full max-w-lg">
               <Button
                 variant="outline"
@@ -82,17 +82,17 @@ const Layout = ({ children, rightSidebar }: LayoutProps) => {
                 </kbd>
               </Button>
             </div>
-            
-            <div className="flex items-center space-x-2">
-              <Button variant="ghost" size="icon" className="h-9 w-9">
-                <Github className="h-4 w-4" />
-                <span className="sr-only">GitHub</span>
-              </Button>
-              <Button variant="ghost" size="icon" onClick={toggleTheme} className="h-9 w-9">
-                {getThemeIcon()}
-                <span className="sr-only">Toggle theme</span>
-              </Button>
-            </div>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <Button variant="ghost" size="icon" className="h-9 w-9">
+              <Github className="h-4 w-4" />
+              <span className="sr-only">GitHub</span>
+            </Button>
+            <Button variant="ghost" size="icon" onClick={toggleTheme} className="h-9 w-9">
+              {getThemeIcon()}
+              <span className="sr-only">Toggle theme</span>
+            </Button>
           </div>
         </div>
       </header>
