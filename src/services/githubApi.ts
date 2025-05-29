@@ -1,3 +1,4 @@
+
 interface GitHubConfig {
   repository: string;
   branch: string;
@@ -71,7 +72,7 @@ export class GitHubDocsService {
   }
 
   private parseFrontmatter(content: string): { metadata: DocMetadata; content: string } {
-    const frontmatterRegex = /^---\n([\s\S]*?)\n---\n([\s\S]*)$/;
+    const frontmatterRegex = /^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/;
     const match = content.match(frontmatterRegex);
     
     if (!match) {
@@ -85,26 +86,72 @@ export class GitHubDocsService {
     const markdownContent = match[2];
     
     const metadata: any = {};
-    frontmatter.split('\n').forEach(line => {
-      const [key, ...valueParts] = line.split(':');
-      if (key && valueParts.length > 0) {
-        let value = valueParts.join(':').trim();
+    
+    // Parse YAML-style frontmatter
+    const lines = frontmatter.split(/\r?\n/);
+    let currentKey = '';
+    let inArray = false;
+    let arrayItems: string[] = [];
+    
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+      if (!trimmedLine) continue;
+      
+      // Handle array continuation
+      if (inArray && trimmedLine.startsWith('- ')) {
+        const item = trimmedLine.substring(2).trim();
         // Remove quotes if present
+        arrayItems.push(item.replace(/^["']|["']$/g, ''));
+        continue;
+      } else if (inArray && !trimmedLine.startsWith('- ')) {
+        // End of array
+        metadata[currentKey] = arrayItems;
+        inArray = false;
+        arrayItems = [];
+      }
+      
+      // Handle key-value pairs
+      const colonIndex = trimmedLine.indexOf(':');
+      if (colonIndex > 0) {
+        const key = trimmedLine.substring(0, colonIndex).trim();
+        let value = trimmedLine.substring(colonIndex + 1).trim();
+        
+        if (!value) {
+          // This might be the start of an array
+          currentKey = key;
+          inArray = true;
+          arrayItems = [];
+          continue;
+        }
+        
+        // Handle inline arrays [item1, item2]
+        if (value.startsWith('[') && value.endsWith(']')) {
+          const arrayContent = value.slice(1, -1);
+          if (arrayContent.trim()) {
+            metadata[key] = arrayContent.split(',').map(item => 
+              item.trim().replace(/^["']|["']$/g, '')
+            );
+          } else {
+            metadata[key] = [];
+          }
+          continue;
+        }
+        
+        // Remove quotes and handle special values
         value = value.replace(/^["']|["']$/g, '');
         
-        if (key.trim() === 'tags') {
-          // Handle array format [tag1, tag2] or simple comma separated
-          if (value.startsWith('[') && value.endsWith(']')) {
-            value = value.slice(1, -1);
-          }
-          metadata[key.trim()] = value.split(',').map(tag => tag.trim().replace(/^["']|["']$/g, ''));
-        } else if (key.trim() === 'order') {
-          metadata[key.trim()] = parseInt(value);
+        if (key === 'order') {
+          metadata[key] = parseInt(value) || 0;
         } else {
-          metadata[key.trim()] = value;
+          metadata[key] = value;
         }
       }
-    });
+    }
+    
+    // Handle any remaining array
+    if (inArray && arrayItems.length > 0) {
+      metadata[currentKey] = arrayItems;
+    }
 
     return {
       metadata: metadata as DocMetadata,
@@ -217,13 +264,21 @@ export class GitHubDocsService {
             .replace(`${this.config.basePath}/`, '')
             .replace('.md', '');
 
-          return {
+          const doc = {
             ...metadata,
             slug,
             content: markdownContent,
             path: file.path,
             sha: file.sha
           };
+
+          // Ensure title is set
+          if (!doc.title || doc.title === 'Untitled') {
+            doc.title = slug.split('/').pop()?.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Untitled';
+          }
+
+          console.log(`Processed doc: ${slug} -> ${doc.title}`);
+          return doc;
         } catch (error) {
           console.error(`Error processing file ${file.path}:`, error);
           return null;
@@ -237,7 +292,7 @@ export class GitHubDocsService {
       this.cache.clear();
       docs.forEach(doc => this.cache.set(doc.slug, doc));
 
-      console.log(`Loaded ${docs.length} docs from GitHub`);
+      console.log(`Loaded ${docs.length} docs from GitHub:`, docs.map(d => `${d.slug} (${d.title})`));
       return docs.sort((a, b) => (a.order || 0) - (b.order || 0));
     } catch (error) {
       console.error('Error getting all docs:', error);
