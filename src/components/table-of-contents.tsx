@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { TableOfContents } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -59,12 +58,19 @@ const TableOfContentsComponent = ({ content }: TableOfContentsProps) => {
       }
     );
 
-    // Set up scroll listener for progress tracking
+    // Set up scroll listener for progress tracking with throttling for smoother performance
+    let ticking = false;
     const handleScroll = () => {
-      const scrollTop = window.scrollY;
-      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
-      const scrollPercent = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
-      setScrollProgress(Math.min(100, Math.max(0, scrollPercent)));
+      if (!ticking) {
+        requestAnimationFrame(() => {
+          const scrollTop = window.scrollY;
+          const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+          const scrollPercent = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
+          setScrollProgress(Math.min(100, Math.max(0, scrollPercent)));
+          ticking = false;
+        });
+        ticking = true;
+      }
     };
 
     // Observe all headings with slight delay to ensure DOM is ready
@@ -121,7 +127,7 @@ const TableOfContentsComponent = ({ content }: TableOfContentsProps) => {
             
             {/* Progress highlight line */}
             <div 
-              className="absolute left-0 top-0 w-0.5 bg-primary transition-all duration-300 ease-out"
+              className="absolute left-0 top-0 w-0.5 bg-primary transition-all duration-500 ease-out"
               style={{
                 height: `${scrollProgress}%`
               }}
@@ -136,7 +142,7 @@ const TableOfContentsComponent = ({ content }: TableOfContentsProps) => {
                     <button
                       onClick={() => scrollToHeading(item.id)}
                       className={cn(
-                        "block w-full text-left text-sm py-2 pl-4 pr-4 rounded-r transition-all duration-200 hover:bg-muted/50 relative ml-2",
+                        "block w-full text-left text-sm py-2 pl-4 pr-4 rounded-r transition-all duration-300 ease-out hover:bg-muted/50 relative ml-2",
                         isActive 
                           ? "text-primary font-medium bg-primary/10" 
                           : "text-muted-foreground hover:text-foreground",
