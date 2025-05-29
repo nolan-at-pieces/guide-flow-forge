@@ -52,43 +52,67 @@ const MarkdownEditor = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    console.log('Key pressed:', e.key);
+    
     if (e.key === '/') {
       const textarea = e.currentTarget;
       const cursorPos = textarea.selectionStart;
       const textBefore = content.substring(0, cursorPos);
       
-      // Only show slash menu if / is at start of line or after whitespace
-      if (cursorPos === 0 || /\s$/.test(textBefore)) {
+      console.log('Slash detected at position:', cursorPos);
+      console.log('Text before cursor:', textBefore);
+      
+      // Check if / is at start of line or after whitespace
+      const lines = textBefore.split('\n');
+      const currentLineText = lines[lines.length - 1];
+      const isAtStartOfLine = currentLineText.length === 0;
+      const isAfterWhitespace = currentLineText.length > 0 && /\s$/.test(currentLineText);
+      
+      console.log('Current line text:', currentLineText);
+      console.log('Is at start of line:', isAtStartOfLine);
+      console.log('Is after whitespace:', isAfterWhitespace);
+      
+      if (isAtStartOfLine || isAfterWhitespace) {
         e.preventDefault();
         setCursorPosition(cursorPos);
         
         // Calculate position for slash menu
         const rect = textarea.getBoundingClientRect();
-        const lines = textBefore.split('\n');
-        const currentLine = lines.length - 1;
+        const scrollTop = textarea.scrollTop;
         const lineHeight = 24; // Approximate line height
+        const currentLine = lines.length - 1;
+        
+        const menuX = rect.left + 10;
+        const menuY = rect.top + (currentLine * lineHeight) + 30 - scrollTop;
+        
+        console.log('Menu position:', { x: menuX, y: menuY });
         
         setSlashMenuPosition({
-          x: rect.left + 10,
-          y: rect.top + (currentLine * lineHeight) + 30
+          x: menuX,
+          y: menuY
         });
         setShowSlashMenu(true);
+        
+        console.log('Slash menu should be visible now');
       }
     } else if (e.key === 'Escape') {
+      console.log('Escape pressed, hiding slash menu');
       setShowSlashMenu(false);
     }
   };
 
   const insertAtCursor = (text: string) => {
+    console.log('Inserting text at cursor:', text);
     const newContent = content.substring(0, cursorPosition) + text + content.substring(cursorPosition);
     setContent(newContent);
     setShowSlashMenu(false);
     
-    // Focus back to textarea
+    // Focus back to textarea and position cursor
     setTimeout(() => {
       if (textareaRef.current) {
         textareaRef.current.focus();
-        textareaRef.current.setSelectionRange(cursorPosition + text.length, cursorPosition + text.length);
+        const newCursorPos = cursorPosition + text.length;
+        textareaRef.current.setSelectionRange(newCursorPos, newCursorPos);
       }
     }, 0);
   };
@@ -122,6 +146,12 @@ const MarkdownEditor = ({
       setSlug(generatedSlug);
     }
   }, [title, isNewPage, slug]);
+
+  // Debug effect to log slash menu state
+  useEffect(() => {
+    console.log('Slash menu visibility changed:', showSlashMenu);
+    console.log('Slash menu position:', slashMenuPosition);
+  }, [showSlashMenu, slashMenuPosition]);
 
   return (
     <div className="h-full flex flex-col bg-background">
@@ -212,7 +242,7 @@ const MarkdownEditor = ({
         {!showPreview ? (
           <>
             {/* Markdown Editor */}
-            <div className="flex-1 flex flex-col">
+            <div className="flex-1 flex flex-col relative">
               <div className="flex-1 relative">
                 <Textarea
                   ref={textareaRef}
@@ -227,12 +257,15 @@ const MarkdownEditor = ({
                     lineHeight: '1.6'
                   }}
                 />
+                {/* Slash Command Menu - positioned absolutely within the editor container */}
                 {showSlashMenu && (
-                  <SlashCommandMenu
-                    position={slashMenuPosition}
-                    onSelect={insertAtCursor}
-                    onClose={() => setShowSlashMenu(false)}
-                  />
+                  <div className="absolute" style={{ zIndex: 1000 }}>
+                    <SlashCommandMenu
+                      position={slashMenuPosition}
+                      onSelect={insertAtCursor}
+                      onClose={() => setShowSlashMenu(false)}
+                    />
+                  </div>
                 )}
               </div>
             </div>
