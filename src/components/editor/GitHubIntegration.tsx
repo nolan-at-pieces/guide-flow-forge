@@ -2,10 +2,9 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
-import { Github, GitBranch, Upload, Settings, CheckCircle } from 'lucide-react';
+import { Github, GitBranch, Settings, CheckCircle, Info } from 'lucide-react';
 import { useGitHubDocs } from '@/hooks/useGitHubDocs';
 
 interface GitHubIntegrationProps {
@@ -100,21 +99,17 @@ const GitHubIntegration = ({ onPublish }: GitHubIntegrationProps) => {
           </div>
           
           <div className="p-3 bg-blue-50 border border-blue-200 rounded text-sm">
-            <p className="text-blue-800 font-medium">Auto-sync enabled</p>
-            <p className="text-blue-700 text-xs mt-1">
-              Changes are automatically committed to GitHub when you save.
-            </p>
+            <div className="flex items-start gap-2">
+              <Info className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-blue-800 font-medium">Auto-sync enabled</p>
+                <p className="text-blue-700 text-xs mt-1">
+                  Changes are automatically committed to GitHub when you save pages. 
+                  You can edit multiple pages and they'll all be saved to your repository.
+                </p>
+              </div>
+            </div>
           </div>
-          
-          <Button 
-            onClick={handlePublish} 
-            disabled={isPublishing}
-            className="w-full"
-            variant="outline"
-          >
-            <Upload className="w-4 h-4 mr-2" />
-            {isPublishing ? 'Publishing...' : 'Publish Current Page'}
-          </Button>
         </div>
       </CardContent>
     </Card>

@@ -3,12 +3,12 @@ import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
-import { Save, Eye, EyeOff, Github, ArrowLeft, FileText } from 'lucide-react';
+import { Save, Eye, EyeOff, ArrowLeft, FileText } from 'lucide-react';
 import SlashCommandMenu from './SlashCommandMenu';
 import MDXRenderer from '@/components/mdx-renderer';
+import MarkdownReference from './MarkdownReference';
 
 interface MarkdownEditorProps {
   initialContent: string;
@@ -117,6 +117,32 @@ const MarkdownEditor = ({
     }, 0);
   };
 
+  // Handle drag and drop from reference sidebar
+  const handleDrop = (e: React.DragEvent<HTMLTextAreaElement>) => {
+    e.preventDefault();
+    const droppedText = e.dataTransfer.getData('text/plain');
+    if (droppedText) {
+      const textarea = e.currentTarget;
+      const dropPosition = textarea.selectionStart;
+      const newContent = content.substring(0, dropPosition) + droppedText + content.substring(dropPosition);
+      setContent(newContent);
+      
+      // Position cursor after inserted text
+      setTimeout(() => {
+        if (textareaRef.current) {
+          const newCursorPos = dropPosition + droppedText.length;
+          textareaRef.current.setSelectionRange(newCursorPos, newCursorPos);
+          textareaRef.current.focus();
+        }
+      }, 0);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLTextAreaElement>) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  };
+
   const handleSave = () => {
     if (!title.trim() || !slug.trim() || !content.trim()) {
       toast({
@@ -180,7 +206,7 @@ const MarkdownEditor = ({
           </Button>
           <Button onClick={handleSave} size="sm" className="bg-primary">
             <Save className="w-4 h-4 mr-2" />
-            Save
+            Save to GitHub
           </Button>
         </div>
       </div>
@@ -249,7 +275,9 @@ const MarkdownEditor = ({
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="Start writing your markdown... Type / for quick commands"
+                  onDrop={handleDrop}
+                  onDragOver={handleDragOver}
+                  placeholder="Start writing your markdown... Type / for quick commands or drag elements from the sidebar"
                   className="h-full w-full resize-none border-0 rounded-none focus:ring-0 focus-visible:ring-0 font-mono text-sm leading-relaxed p-6"
                   style={{ 
                     minHeight: '100%',
@@ -259,7 +287,14 @@ const MarkdownEditor = ({
                 />
                 {/* Slash Command Menu - positioned absolutely within the editor container */}
                 {showSlashMenu && (
-                  <div className="absolute" style={{ zIndex: 1000 }}>
+                  <div 
+                    className="absolute pointer-events-auto"
+                    style={{ 
+                      left: slashMenuPosition.x - 200,
+                      top: slashMenuPosition.y + 50,
+                      zIndex: 1000
+                    }}
+                  >
                     <SlashCommandMenu
                       position={slashMenuPosition}
                       onSelect={insertAtCursor}
@@ -271,74 +306,7 @@ const MarkdownEditor = ({
             </div>
             
             {/* Markdown Reference Sidebar */}
-            <div className="w-72 border-l bg-muted/20 overflow-auto">
-              <div className="p-4">
-                <h3 className="font-semibold text-sm mb-4 text-foreground">Markdown Reference</h3>
-                <div className="space-y-4 text-xs">
-                  <div>
-                    <div className="font-medium mb-2 text-foreground">Headers</div>
-                    <div className="font-mono text-muted-foreground space-y-1">
-                      <div># Header 1</div>
-                      <div>## Header 2</div>
-                      <div>### Header 3</div>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <div className="font-medium mb-2 text-foreground">Text Formatting</div>
-                    <div className="font-mono text-muted-foreground space-y-1">
-                      <div>**bold text**</div>
-                      <div>*italic text*</div>
-                      <div>`inline code`</div>
-                      <div>~~strikethrough~~</div>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <div className="font-medium mb-2 text-foreground">Lists</div>
-                    <div className="font-mono text-muted-foreground space-y-1">
-                      <div>- Bullet point</div>
-                      <div>1. Numbered item</div>
-                      <div>- [ ] Todo item</div>
-                      <div>- [x] Done item</div>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <div className="font-medium mb-2 text-foreground">Links & Images</div>
-                    <div className="font-mono text-muted-foreground space-y-1">
-                      <div>[link text](url)</div>
-                      <div>![alt text](image.jpg)</div>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <div className="font-medium mb-2 text-foreground">Code Blocks</div>
-                    <div className="font-mono text-muted-foreground space-y-1">
-                      <div>```javascript</div>
-                      <div>const x = 'code';</div>
-                      <div>```</div>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <div className="font-medium mb-2 text-foreground">Other</div>
-                    <div className="font-mono text-muted-foreground space-y-1">
-                      <div>{'> Blockquote'}</div>
-                      <div>---</div>
-                      <div className="text-xs text-muted-foreground mt-2">Horizontal rule</div>
-                    </div>
-                  </div>
-                  
-                  <div className="pt-4 border-t">
-                    <div className="font-medium mb-2 text-foreground">Quick Insert</div>
-                    <div className="text-muted-foreground">
-                      Type <kbd className="px-1 py-0.5 bg-muted rounded text-xs">/</kbd> for commands
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <MarkdownReference onInsert={insertAtCursor} />
           </>
         ) : (
           /* Preview Mode */
