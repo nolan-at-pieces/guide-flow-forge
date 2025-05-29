@@ -44,20 +44,32 @@ const TableOfContentsComponent = ({ content }: TableOfContentsProps) => {
     // Set up intersection observer to track active section
     const observer = new IntersectionObserver(
       (entries) => {
-        const visibleEntries = entries.filter(entry => entry.isIntersecting);
+        // Filter visible entries and sort by position
+        const visibleEntries = entries
+          .filter(entry => entry.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
         
         if (visibleEntries.length > 0) {
-          // Get the entry with the highest intersection ratio that's in the upper half of viewport
-          const topEntry = visibleEntries
-            .filter(entry => entry.boundingClientRect.top < window.innerHeight / 2)
-            .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0] || visibleEntries[0];
+          // Find the entry that's most prominently visible in the viewport
+          const viewportHeight = window.innerHeight;
+          const topThreshold = viewportHeight * 0.3;
           
-          setActiveId(topEntry.target.id);
+          // Prefer entries in the top portion of the viewport
+          const topEntry = visibleEntries.find(entry => 
+            entry.boundingClientRect.top <= topThreshold && entry.boundingClientRect.top >= -50
+          );
+          
+          if (topEntry) {
+            setActiveId(topEntry.target.id);
+          } else {
+            // Fallback to the first visible entry
+            setActiveId(visibleEntries[0].target.id);
+          }
         }
       },
       {
-        rootMargin: "-20% 0% -60% 0%",
-        threshold: [0, 0.1, 0.3, 0.5, 0.7, 1]
+        rootMargin: "-10% 0% -70% 0%",
+        threshold: [0, 0.1, 0.25, 0.5, 0.75, 1]
       }
     );
 
@@ -78,15 +90,31 @@ const TableOfContentsComponent = ({ content }: TableOfContentsProps) => {
     // Observe all headings with delay to ensure DOM is ready
     const observeHeadings = () => {
       const headings = document.querySelectorAll("h1[id], h2[id], h3[id], h4[id], h5[id], h6[id]");
+      console.log('Found headings:', Array.from(headings).map(h => ({ id: h.id, text: h.textContent })));
+      
       headings.forEach((heading) => observer.observe(heading));
       
-      // Set initial active heading if none is set
-      if (headings.length > 0 && !activeId) {
-        setActiveId(headings[0].id);
+      // Set initial active heading based on scroll position
+      if (headings.length > 0) {
+        const viewportTop = window.scrollY + window.innerHeight * 0.3;
+        let closestHeading = headings[0];
+        
+        for (const heading of headings) {
+          const rect = heading.getBoundingClientRect();
+          const elementTop = window.scrollY + rect.top;
+          
+          if (elementTop <= viewportTop) {
+            closestHeading = heading;
+          } else {
+            break;
+          }
+        }
+        
+        setActiveId(closestHeading.id);
       }
     };
 
-    const timeoutId = setTimeout(observeHeadings, 150);
+    const timeoutId = setTimeout(observeHeadings, 200);
     
     // Add scroll listener with passive flag for better performance
     window.addEventListener('scroll', handleScroll, { passive: true });
@@ -100,12 +128,18 @@ const TableOfContentsComponent = ({ content }: TableOfContentsProps) => {
         cancelAnimationFrame(frameRef.current);
       }
     };
-  }, [tocItems, activeId]);
+  }, [tocItems]);
 
   const scrollToHeading = (id: string) => {
     const element = document.getElementById(id);
     if (element) {
-      element.scrollIntoView({ behavior: "smooth", block: "start" });
+      const headerHeight = 80; // Account for sticky header
+      const elementPosition = element.offsetTop - headerHeight;
+      
+      window.scrollTo({
+        top: elementPosition,
+        behavior: "smooth"
+      });
     }
   };
 
@@ -125,10 +159,9 @@ const TableOfContentsComponent = ({ content }: TableOfContentsProps) => {
             
             {/* Progress highlight line */}
             <div 
-              className="absolute left-0 top-0 w-0.5 bg-primary will-change-transform"
+              className="absolute left-0 top-0 w-0.5 bg-primary transition-all duration-300 ease-out"
               style={{
-                height: `${scrollProgress}%`,
-                transition: 'height 150ms cubic-bezier(0.4, 0, 0.2, 1)'
+                height: `${scrollProgress}%`
               }}
             ></div>
             
@@ -141,10 +174,9 @@ const TableOfContentsComponent = ({ content }: TableOfContentsProps) => {
                     <button
                       onClick={() => scrollToHeading(item.id)}
                       className={cn(
-                        "block w-full text-left text-sm py-2 pl-4 pr-4 rounded-r relative ml-2 will-change-transform",
-                        "transition-all duration-200 ease-out hover:bg-muted/50",
+                        "block w-full text-left text-sm py-2 pl-4 pr-4 rounded-r relative ml-2 transition-all duration-200 ease-out hover:bg-muted/50",
                         isActive 
-                          ? "text-primary font-medium bg-primary/8" 
+                          ? "text-primary font-medium bg-primary/10" 
                           : "text-muted-foreground hover:text-foreground",
                         item.level === 1 && "font-medium",
                         item.level === 2 && "pl-6",
