@@ -42,24 +42,40 @@ const TableOfContentsComponent = ({ content }: TableOfContentsProps) => {
     // Set up intersection observer to track active section
     const observer = new IntersectionObserver(
       (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            setActiveId(entry.target.id);
-          }
-        });
+        // Find the entry that's most visible
+        const visibleEntries = entries.filter(entry => entry.isIntersecting);
+        if (visibleEntries.length > 0) {
+          // Get the one closest to the top
+          const topEntry = visibleEntries.reduce((prev, current) => 
+            prev.boundingClientRect.top < current.boundingClientRect.top ? prev : current
+          );
+          setActiveId(topEntry.target.id);
+        }
       },
       {
-        rootMargin: "-20% 0% -80% 0%",
-        threshold: 0
+        rootMargin: "-10% 0% -70% 0%",
+        threshold: [0, 0.25, 0.5, 0.75, 1]
       }
     );
 
-    // Observe all headings
-    const headings = document.querySelectorAll("h1, h2, h3, h4, h5, h6");
-    headings.forEach((heading) => observer.observe(heading));
+    // Observe all headings with slight delay to ensure DOM is ready
+    const observeHeadings = () => {
+      const headings = document.querySelectorAll("h1[id], h2[id], h3[id], h4[id], h5[id], h6[id]");
+      headings.forEach((heading) => observer.observe(heading));
+      
+      // Set initial active heading
+      if (headings.length > 0 && !activeId) {
+        setActiveId(headings[0].id);
+      }
+    };
 
-    return () => observer.disconnect();
-  }, [tocItems]);
+    const timeoutId = setTimeout(observeHeadings, 100);
+
+    return () => {
+      clearTimeout(timeoutId);
+      observer.disconnect();
+    };
+  }, [tocItems, activeId]);
 
   const scrollToHeading = (id: string) => {
     const element = document.getElementById(id);
@@ -75,6 +91,7 @@ const TableOfContentsComponent = ({ content }: TableOfContentsProps) => {
   if (tocItems.length === 0) return null;
 
   const activeIndex = getActiveIndex();
+  const progressPercentage = activeIndex >= 0 ? ((activeIndex + 1) / tocItems.length) * 100 : 0;
 
   return (
     <div className="w-64 shrink-0 hidden xl:block">
@@ -85,21 +102,18 @@ const TableOfContentsComponent = ({ content }: TableOfContentsProps) => {
             On this page
           </div>
           <nav className="relative">
-            {/* Main vertical line */}
-            <div className="absolute left-1 top-0 bottom-0 w-px bg-border"></div>
+            {/* Background line */}
+            <div className="absolute left-2 top-0 bottom-0 w-0.5 bg-border"></div>
             
-            {/* Active section highlight bar */}
-            {activeIndex >= 0 && (
-              <div 
-                className="absolute left-0 w-1 bg-primary rounded-full transition-all duration-300 ease-out"
-                style={{
-                  top: `${activeIndex * 32 + 4}px`,
-                  height: '24px'
-                }}
-              ></div>
-            )}
+            {/* Progress highlight line */}
+            <div 
+              className="absolute left-2 top-0 w-0.5 bg-primary transition-all duration-500 ease-out"
+              style={{
+                height: `${progressPercentage}%`
+              }}
+            ></div>
             
-            <div className="space-y-0">
+            <div className="space-y-1">
               {tocItems.map((item, index) => {
                 const isActive = activeId === item.id;
                 
@@ -108,15 +122,15 @@ const TableOfContentsComponent = ({ content }: TableOfContentsProps) => {
                     <button
                       onClick={() => scrollToHeading(item.id)}
                       className={cn(
-                        "block w-full text-left text-sm py-2 px-4 rounded transition-colors hover:bg-muted/50 relative",
+                        "block w-full text-left text-sm py-2 pl-6 pr-4 rounded-r transition-all duration-200 hover:bg-muted/50 relative",
                         isActive 
-                          ? "text-primary font-medium bg-primary/5" 
+                          ? "text-primary font-medium bg-primary/10" 
                           : "text-muted-foreground hover:text-foreground",
                         item.level === 1 && "font-medium",
-                        item.level === 2 && "pl-6",
-                        item.level === 3 && "pl-8 text-xs",
-                        item.level === 4 && "pl-10 text-xs",
-                        item.level >= 5 && "pl-12 text-xs"
+                        item.level === 2 && "pl-8",
+                        item.level === 3 && "pl-10 text-xs",
+                        item.level === 4 && "pl-12 text-xs",
+                        item.level >= 5 && "pl-14 text-xs"
                       )}
                     >
                       {item.text}
