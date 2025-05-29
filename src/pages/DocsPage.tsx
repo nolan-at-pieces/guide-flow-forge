@@ -22,6 +22,37 @@ interface DocMeta {
   tags?: string[];
 }
 
+// Public GitHub repository configuration for unauthenticated users
+const PUBLIC_GITHUB_CONFIG = {
+  repository: "nolan-at-pieces/guide-flow-forge",
+  branch: "main",
+  token: "", // No token needed for public repos
+  basePath: "sample-docs"
+};
+
+// Simple function to fetch from public GitHub repo without authentication
+const fetchPublicGitHubContent = async (path: string): Promise<string> => {
+  const url = `https://api.github.com/repos/${PUBLIC_GITHUB_CONFIG.repository}/contents/${PUBLIC_GITHUB_CONFIG.basePath}/${path}?ref=${PUBLIC_GITHUB_CONFIG.branch}`;
+  
+  const response = await fetch(url, {
+    headers: {
+      'Accept': 'application/vnd.github.v3+json',
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch ${path}: ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  
+  if (data.encoding === 'base64') {
+    return atob(data.content.replace(/\s/g, ''));
+  }
+  
+  return data.content;
+};
+
 const DocsPage = () => {
   const params = useParams();
   const location = useLocation();
@@ -54,8 +85,8 @@ const DocsPage = () => {
       setError(null);
       setNotFound(false);
 
-      // If GitHub is configured and docs are loaded, get from cache
-      if (isConfigured && service && initialized && docs.length > 0) {
+      // For authenticated users with GitHub configured, use the service
+      if (user && isConfigured && service && initialized && docs.length > 0) {
         const doc = docs.find(d => d.slug === slug);
         if (doc) {
           console.log('Loading doc from cache:', doc);
@@ -74,8 +105,8 @@ const DocsPage = () => {
         return;
       }
 
-      // If GitHub is configured but not yet initialized, try to fetch directly
-      if (isConfigured && service && !initialized) {
+      // For authenticated users with GitHub configured but not yet initialized
+      if (user && isConfigured && service && !initialized) {
         try {
           const doc = await service.getDocBySlug(slug);
           if (doc) {
@@ -101,7 +132,87 @@ const DocsPage = () => {
         }
       }
 
-      // Fallback to mock data when GitHub is not configured - AVAILABLE TO ALL USERS
+      // For ALL users (authenticated or not), try to load from public GitHub repo first
+      try {
+        console.log('Attempting to load from public GitHub repo:', slug);
+        const filePath = slug.endsWith('.md') ? slug : `${slug}.md`;
+        const content = await fetchPublicGitHubContent(filePath);
+        
+        // Simple frontmatter parsing for public docs
+        const parseFrontmatter = (content: string) => {
+          const normalizedContent = content.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+          
+          if (!normalizedContent.startsWith('---\n')) {
+            return {
+              metadata: { title: 'Untitled', order: 0 },
+              content: normalizedContent.trim()
+            };
+          }
+          
+          const contentAfterFirstDelimiter = normalizedContent.substring(4);
+          const endDelimiterIndex = contentAfterFirstDelimiter.indexOf('\n---\n');
+          
+          if (endDelimiterIndex === -1) {
+            return {
+              metadata: { title: 'Untitled', order: 0 },
+              content: normalizedContent.trim()
+            };
+          }
+          
+          const frontmatterSection = contentAfterFirstDelimiter.substring(0, endDelimiterIndex);
+          const contentAfterFrontmatter = contentAfterFirstDelimiter.substring(endDelimiterIndex + 5);
+          
+          const metadata: any = { order: 0 };
+          
+          const lines = frontmatterSection.split('\n');
+          for (const line of lines) {
+            const trimmedLine = line.trim();
+            if (!trimmedLine) continue;
+            
+            const colonIndex = trimmedLine.indexOf(':');
+            if (colonIndex > 0) {
+              const key = trimmedLine.substring(0, colonIndex).trim();
+              let value = trimmedLine.substring(colonIndex + 1).trim();
+              
+              value = value.replace(/^["']|["']$/g, '');
+              
+              if (key === 'order') {
+                metadata[key] = parseInt(value) || 0;
+              } else if (key === 'tags' && value.startsWith('[') && value.endsWith(']')) {
+                const arrayContent = value.slice(1, -1);
+                metadata[key] = arrayContent ? arrayContent.split(',').map(item => 
+                  item.trim().replace(/^["']|["']$/g, '')
+                ) : [];
+              } else {
+                metadata[key] = value;
+              }
+            }
+          }
+          
+          return {
+            metadata,
+            content: contentAfterFrontmatter.trim()
+          };
+        };
+
+        const { metadata, content: markdownContent } = parseFrontmatter(content);
+        
+        console.log('Successfully loaded from public GitHub:', slug);
+        setDocContent(markdownContent);
+        setDocMeta({
+          title: metadata.title || slug.replace('-', ' '),
+          description: metadata.description,
+          order: metadata.order || 0,
+          icon: metadata.icon,
+          tags: metadata.tags
+        });
+        setLoading(false);
+        return;
+      } catch (err) {
+        console.log('Failed to load from public GitHub, falling back to mock data:', err);
+      }
+
+      // Fallback to mock data when GitHub is not available
       try {
         const mockDocs: Record<string, {
           content: string;
@@ -275,7 +386,8 @@ Understand API rate limits and best practices.
       }
     };
     loadDoc();
-  }, [slug, service, isConfigured, docs, initialized]);
+  }, [slug, service, isConfigured, docs, initialized, user]);
+
   if (loading) {
     return <Layout>
         <div className="animate-pulse">Loading...</div>
