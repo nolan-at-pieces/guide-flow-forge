@@ -71,8 +71,8 @@ export class GitHubDocsService {
   }
 
   private parseFrontmatter(content: string): { metadata: DocMetadata; content: string } {
-    // More robust frontmatter regex that handles different line endings
-    const frontmatterRegex = /^---\s*\n([\s\S]*?)\n---\s*\n([\s\S]*)$/;
+    // More robust frontmatter regex that handles different line endings and spacing
+    const frontmatterRegex = /^---\s*[\r\n]+([\s\S]*?)[\r\n]+---\s*[\r\n]+([\s\S]*)$/;
     const match = content.match(frontmatterRegex);
     
     if (!match) {
@@ -84,11 +84,11 @@ export class GitHubDocsService {
       };
     }
 
-    const frontmatter = match[1];
+    const frontmatter = match[1].trim();
     const markdownContent = match[2].trim(); // This is the content WITHOUT frontmatter
     
     console.log('Frontmatter section:', frontmatter);
-    console.log('Markdown content length:', markdownContent.length);
+    console.log('Markdown content (first 100 chars):', markdownContent.substring(0, 100));
     
     const metadata: any = {};
     
