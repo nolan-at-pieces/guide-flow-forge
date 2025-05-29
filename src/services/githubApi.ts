@@ -71,23 +71,28 @@ export class GitHubDocsService {
   }
 
   private parseFrontmatter(content: string): { metadata: DocMetadata; content: string } {
-    const frontmatterRegex = /^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/;
+    // More robust frontmatter regex that handles different line endings
+    const frontmatterRegex = /^---\s*\n([\s\S]*?)\n---\s*\n([\s\S]*)$/;
     const match = content.match(frontmatterRegex);
     
     if (!match) {
+      console.log('No frontmatter found in content');
       // No frontmatter found, return content as-is with default metadata
       return {
         metadata: { title: 'Untitled', slug: '' },
-        content: content
+        content: content.trim()
       };
     }
 
     const frontmatter = match[1];
-    const markdownContent = match[2]; // This is the content WITHOUT frontmatter
+    const markdownContent = match[2].trim(); // This is the content WITHOUT frontmatter
+    
+    console.log('Frontmatter section:', frontmatter);
+    console.log('Markdown content length:', markdownContent.length);
     
     const metadata: any = {};
     
-    // Parse YAML-style frontmatter
+    // Parse YAML-style frontmatter more carefully
     const lines = frontmatter.split(/\r?\n/);
     let currentKey = '';
     let inArray = false;
@@ -153,7 +158,8 @@ export class GitHubDocsService {
       metadata[currentKey] = arrayItems;
     }
 
-    console.log('Parsed frontmatter:', { metadata, contentLength: markdownContent.length });
+    console.log('Parsed frontmatter metadata:', metadata);
+    console.log('Final content starts with:', markdownContent.substring(0, 100));
 
     return {
       metadata: metadata as DocMetadata,
@@ -279,7 +285,7 @@ export class GitHubDocsService {
             doc.title = slug.split('/').pop()?.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Untitled';
           }
 
-          console.log(`Processed doc: ${slug} -> ${doc.title}`);
+          console.log(`Processed doc: ${slug} -> ${doc.title}, tags:`, doc.tags);
           return doc;
         } catch (error) {
           console.error(`Error processing file ${file.path}:`, error);
