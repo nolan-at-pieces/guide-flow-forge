@@ -71,27 +71,40 @@ export class GitHubDocsService {
   }
 
   private parseFrontmatter(content: string): { metadata: DocMetadata; content: string } {
+    console.log('=== FRONTMATTER PARSING DEBUG ===');
+    console.log('Original content length:', content.length);
+    console.log('Content starts with:', content.substring(0, 200));
+    
     // Handle different line endings and ensure we capture frontmatter properly
     const normalizedContent = content.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
     
-    // More precise frontmatter regex - must start at beginning of file
-    const frontmatterRegex = /^---\n([\s\S]*?)\n---\n?([\s\S]*)$/;
-    const match = normalizedContent.match(frontmatterRegex);
-    
-    if (!match) {
-      console.log('No frontmatter found in content');
-      // No frontmatter found, return content as-is with default metadata
+    // Check if content starts with frontmatter
+    if (!normalizedContent.startsWith('---\n')) {
+      console.log('Content does not start with frontmatter delimiter');
       return {
         metadata: { title: 'Untitled', slug: '' },
         content: normalizedContent.trim()
       };
     }
-
-    const frontmatterSection = match[1];
-    const markdownContent = match[2]; // Content AFTER frontmatter
     
-    console.log('Frontmatter found and will be removed from display');
-    console.log('Content after frontmatter removal starts with:', markdownContent.substring(0, 100));
+    // Find the end of frontmatter - look for second ---
+    const contentAfterFirstDelimiter = normalizedContent.substring(4); // Skip first "---\n"
+    const endDelimiterIndex = contentAfterFirstDelimiter.indexOf('\n---\n');
+    
+    if (endDelimiterIndex === -1) {
+      console.log('Could not find closing frontmatter delimiter');
+      return {
+        metadata: { title: 'Untitled', slug: '' },
+        content: normalizedContent.trim()
+      };
+    }
+    
+    const frontmatterSection = contentAfterFirstDelimiter.substring(0, endDelimiterIndex);
+    const contentAfterFrontmatter = contentAfterFirstDelimiter.substring(endDelimiterIndex + 5); // Skip "\n---\n"
+    
+    console.log('Frontmatter section extracted:', frontmatterSection);
+    console.log('Content after frontmatter starts with:', contentAfterFrontmatter.substring(0, 100));
+    console.log('Content after frontmatter length:', contentAfterFrontmatter.length);
     
     const metadata: any = {};
     
@@ -166,7 +179,7 @@ export class GitHubDocsService {
     // Return ONLY the markdown content without any frontmatter
     return {
       metadata: metadata as DocMetadata,
-      content: markdownContent.trim() // This should NOT contain frontmatter
+      content: contentAfterFrontmatter.trim() // This should NOT contain frontmatter
     };
   }
 

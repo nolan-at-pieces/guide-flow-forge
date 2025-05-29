@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { useGitHubDocs, useGitHubDocsList } from "@/hooks/useGitHubDocs";
 import { DocContent } from "@/services/githubApi";
+
 interface DocMeta {
   title: string;
   description?: string;
@@ -20,6 +21,7 @@ interface DocMeta {
   icon?: string;
   tags?: string[];
 }
+
 const DocsPage = () => {
   const params = useParams();
   const location = useLocation();
@@ -45,6 +47,7 @@ const DocsPage = () => {
     docs,
     initialized
   } = useGitHubDocsList();
+
   useEffect(() => {
     const loadDoc = async () => {
       setLoading(true);
@@ -98,7 +101,7 @@ const DocsPage = () => {
         }
       }
 
-      // Fallback to mock data when GitHub is not configured
+      // Fallback to mock data when GitHub is not configured - AVAILABLE TO ALL USERS
       try {
         const mockDocs: Record<string, {
           content: string;
@@ -289,7 +292,8 @@ Understand API rate limits and best practices.
   return <Layout rightSidebar={<TableOfContentsComponent content={docContent} />}>
       <article className="prose prose-slate dark:prose-invert max-w-none">
         {/* Configuration Notice for Admins - Only show to logged in admins/editors */}
-        {!isConfigured && (isAdmin || isEditor) && user && <div className="not-prose mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+        {!isConfigured && (isAdmin || isEditor) && user && (
+          <div className="not-prose mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-medium text-yellow-800">GitHub Not Configured</h3>
@@ -301,28 +305,36 @@ Understand API rate limits and best practices.
                 Configure
               </Button>
             </div>
-          </div>}
+          </div>
+        )}
 
         {/* Edit Button for Admins/Editors - Only show to logged in admins/editors */}
-        {(isAdmin || isEditor) && user && <div className="not-prose mb-4 flex justify-end">
+        {(isAdmin || isEditor) && user && (
+          <div className="not-prose mb-4 flex justify-end">
             <Button variant="outline" size="sm" onClick={() => navigate(`/edit/${slug}`)}>
               <Edit className="w-4 h-4 mr-2" />
               Edit Page
             </Button>
-          </div>}
+          </div>
+        )}
         
-        {docMeta && <div className="not-prose mb-8">
+        {docMeta && (
+          <div className="not-prose mb-8">
             <div className="flex items-center gap-2 mb-2">
               {docMeta.icon && <span className="text-2xl">{docMeta.icon}</span>}
-              
+              <h1 className="text-4xl font-bold">{docMeta.title}</h1>
             </div>
             {docMeta.description && <p className="text-lg text-muted-foreground mb-4">{docMeta.description}</p>}
-            {docMeta.tags && <div className="flex gap-2">
+            {docMeta.tags && (
+              <div className="flex gap-2">
                 {docMeta.tags.map(tag => <Badge key={tag} variant="secondary">{tag}</Badge>)}
-              </div>}
-          </div>}
+              </div>
+            )}
+          </div>
+        )}
         <MDXRenderer content={docContent} />
       </article>
     </Layout>;
 };
+
 export default DocsPage;
