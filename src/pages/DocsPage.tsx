@@ -78,6 +78,7 @@ const parseFrontmatter = (content: string) => {
   }
   
   if (frontmatterEndIndex === -1) {
+    // No closing frontmatter found, treat as regular content
     return {
       metadata: { title: 'Untitled', order: 0 },
       content: normalizedContent.trim()
@@ -159,6 +160,12 @@ const parseFrontmatter = (content: string) => {
   if (inArray && arrayItems.length > 0) {
     metadata[currentKey] = arrayItems;
   }
+  
+  console.log('Frontmatter parsing result:');
+  console.log('Original content length:', normalizedContent.length);
+  console.log('Clean content length:', cleanContent.length);
+  console.log('Metadata:', metadata);
+  console.log('Clean content preview:', cleanContent.substring(0, 100));
   
   return {
     metadata,
