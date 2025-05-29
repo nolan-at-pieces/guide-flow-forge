@@ -37,9 +37,13 @@ interface DocContent extends DocMetadata {
 
 export class GitHubDocsService {
   private config: GitHubConfig;
+  private cache: Map<string, DocContent> = new Map();
+  private lastCommitSha: string | null = null;
+  private listeners: Set<() => void> = new Set();
 
   constructor(config: GitHubConfig) {
     this.config = config;
+    this.startPolling();
   }
 
   private getApiUrl(path: string): string {
@@ -72,13 +76,20 @@ export class GitHubDocsService {
     frontmatter.split('\n').forEach(line => {
       const [key, ...valueParts] = line.split(':');
       if (key && valueParts.length > 0) {
-        const value = valueParts.join(':').trim();
+        let value = valueParts.join(':').trim();
+        // Remove quotes if present
+        value = value.replace(/^["']|["']$/g, '');
+        
         if (key.trim() === 'tags') {
-          metadata[key.trim()] = value.split(',').map(tag => tag.trim());
+          // Handle array format [tag1, tag2] or simple comma separated
+          if (value.startsWith('[') && value.endsWith(']')) {
+            value = value.slice(1, -1);
+          }
+          metadata[key.trim()] = value.split(',').map(tag => tag.trim().replace(/^["']|["']$/g, ''));
         } else if (key.trim() === 'order') {
           metadata[key.trim()] = parseInt(value);
         } else {
-          metadata[key.trim()] = value.replace(/^["']|["']$/g, '');
+          metadata[key.trim()] = value;
         }
       }
     });
@@ -96,7 +107,7 @@ export class GitHubDocsService {
     if (metadata.order !== undefined) lines.push(`order: ${metadata.order}`);
     if (metadata.icon) lines.push(`icon: "${metadata.icon}"`);
     if (metadata.tags && metadata.tags.length > 0) {
-      lines.push(`tags: ${metadata.tags.join(', ')}`);
+      lines.push(`tags: [${metadata.tags.map(tag => `"${tag}"`).join(', ')}]`);
     }
     lines.push('---');
     return lines.join('\n') + '\n\n';
@@ -192,6 +203,10 @@ export class GitHubDocsService {
         }
       }
 
+      // Cache the results
+      this.cache.clear();
+      docs.forEach(doc => this.cache.set(doc.slug, doc));
+
       return docs.sort((a, b) => (a.order || 0) - (b.order || 0));
     } catch (error) {
       console.error('Error getting all docs:', error);
@@ -237,6 +252,10 @@ export class GitHubDocsService {
       if (!response.ok) {
         throw new Error(`Failed to save ${filePath}: ${response.statusText}`);
       }
+
+      // Update cache and notify listeners
+      this.cache.set(doc.slug, doc);
+      this.notifyListeners();
     } catch (error) {
       console.error('Error creating/updating doc:', error);
       throw error;
@@ -269,10 +288,67 @@ export class GitHubDocsService {
       if (!deleteResponse.ok) {
         throw new Error(`Failed to delete ${path}: ${deleteResponse.statusText}`);
       }
+
+      // Update cache and notify listeners
+      const slug = path.replace('.md', '');
+      this.cache.delete(slug);
+      this.notifyListeners();
     } catch (error) {
       console.error('Error deleting doc:', error);
       throw error;
     }
+  }
+
+  // Real-time polling functionality
+  private async checkForUpdates(): Promise<void> {
+    try {
+      const response = await fetch(
+        `https://api.github.com/repos/${this.config.repository}/branches/${this.config.branch}`,
+        { headers: this.getHeaders() }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        const currentSha = data.commit.sha;
+        
+        if (this.lastCommitSha && this.lastCommitSha !== currentSha) {
+          console.log('GitHub repository updated, refreshing docs...');
+          await this.getAllDocs(); // This will update the cache
+          this.notifyListeners();
+        }
+        
+        this.lastCommitSha = currentSha;
+      }
+    } catch (error) {
+      console.error('Error checking for updates:', error);
+    }
+  }
+
+  private startPolling(): void {
+    // Poll every 30 seconds for changes
+    setInterval(() => {
+      this.checkForUpdates();
+    }, 30000);
+    
+    // Initial check
+    this.checkForUpdates();
+  }
+
+  // Listener management for real-time updates
+  addListener(callback: () => void): void {
+    this.listeners.add(callback);
+  }
+
+  removeListener(callback: () => void): void {
+    this.listeners.delete(callback);
+  }
+
+  private notifyListeners(): void {
+    this.listeners.forEach(callback => callback());
+  }
+
+  getCachedDocs(): DocContent[] {
+    return Array.from(this.cache.values()).sort((a, b) => (a.order || 0) - (b.order || 0));
   }
 }
 

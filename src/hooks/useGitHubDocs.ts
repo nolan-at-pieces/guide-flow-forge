@@ -65,6 +65,7 @@ export const useGitHubDocsList = () => {
   const [docs, setDocs] = useState<DocContent[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
 
   const fetchDocs = useCallback(async () => {
     if (!service) return;
@@ -74,6 +75,7 @@ export const useGitHubDocsList = () => {
     try {
       const allDocs = await service.getAllDocs();
       setDocs(allDocs);
+      setLastUpdate(new Date());
     } catch (err) {
       console.error('Error fetching docs:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch documents');
@@ -82,16 +84,32 @@ export const useGitHubDocsList = () => {
     }
   }, [service]);
 
+  // Set up real-time listener
   useEffect(() => {
-    if (service) {
-      fetchDocs();
-    }
+    if (!service) return;
+
+    const handleUpdate = () => {
+      console.log('Docs updated from GitHub, refreshing...');
+      const cachedDocs = service.getCachedDocs();
+      setDocs(cachedDocs);
+      setLastUpdate(new Date());
+    };
+
+    service.addListener(handleUpdate);
+
+    // Initial fetch
+    fetchDocs();
+
+    return () => {
+      service.removeListener(handleUpdate);
+    };
   }, [service, fetchDocs]);
 
   return {
     docs,
     loading,
     error,
+    lastUpdate,
     refetch: fetchDocs
   };
 };

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -5,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useLocation, Link } from "react-router-dom";
 import { routeConfig } from "@/config/routes";
 import { Separator } from "@/components/ui/separator";
-import { useGitHubDocs } from "@/hooks/useGitHubDocs";
+import { useGitHubDocsList } from "@/hooks/useGitHubDocs";
 import { useAuth } from "@/hooks/useAuth";
 
 interface DocItem {
@@ -26,52 +27,38 @@ const Sidebar = ({ activeSection }: SidebarProps) => {
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const [docTree, setDocTree] = useState<DocItem[]>([]);
   const location = useLocation();
-  const { service, isConfigured } = useGitHubDocs();
+  const { docs, loading, error, lastUpdate } = useGitHubDocsList();
   const { user, isAdmin, isEditor } = useAuth();
 
   useEffect(() => {
-    const buildNavigationFromGitHub = async () => {
-      if (!isConfigured || !service) {
-        // Use fallback static content when GitHub is not configured
-        setDocTree(getFallbackContent(activeSection));
-        return;
-      }
-
-      try {
-        const docs = await service.getAllDocs();
-        const tree = buildTreeFromDocs(docs, activeSection);
-        setDocTree(tree);
-      } catch (error) {
-        console.error('Error building navigation:', error);
-        // Fallback to static content on error
-        setDocTree(getFallbackContent(activeSection));
-      }
-    };
-
-    buildNavigationFromGitHub();
-  }, [service, isConfigured, activeSection]);
+    console.log('Building navigation from GitHub docs:', docs.length, 'docs loaded');
+    const tree = buildTreeFromDocs(docs, activeSection);
+    setDocTree(tree);
+  }, [docs, activeSection, lastUpdate]);
 
   const buildTreeFromDocs = (docs: any[], section: string): DocItem[] => {
+    console.log('Building tree for section:', section, 'with docs:', docs.map(d => d.slug));
+    
     // Filter docs by section and build hierarchy
     const sectionDocs = docs.filter(doc => {
       if (section === 'products') {
-        return doc.slug.startsWith('products/') || 
-               doc.slug.startsWith('getting-started/') || 
-               doc.slug.startsWith('examples/') ||
-               doc.slug.startsWith('troubleshooting/') ||
-               doc.slug === 'getting-started' ||
-               doc.slug === 'examples' ||
-               doc.slug === 'troubleshooting';
+        return doc.slug.startsWith('getting-started') || 
+               doc.slug.startsWith('examples') ||
+               doc.slug.startsWith('troubleshooting') ||
+               doc.slug.startsWith('guides');
       } else if (section === 'api') {
-        return doc.slug.startsWith('api-reference/') || 
-               doc.slug.startsWith('sdks/') || 
-               doc.slug.startsWith('webhooks/') ||
-               doc.slug === 'api-reference' ||
-               doc.slug === 'sdks' ||
-               doc.slug === 'webhooks';
+        return doc.slug.startsWith('api-reference') || 
+               doc.slug.startsWith('sdks') || 
+               doc.slug.startsWith('webhooks');
       }
       return false;
     });
+
+    console.log('Filtered docs for section:', sectionDocs.map(d => d.slug));
+
+    if (sectionDocs.length === 0) {
+      return [];
+    }
 
     // Group docs by top-level sections
     const grouped: { [key: string]: DocItem[] } = {};
@@ -103,6 +90,8 @@ const Sidebar = ({ activeSection }: SidebarProps) => {
       }
     });
 
+    console.log('Grouped docs:', grouped);
+
     // Convert to tree structure
     const tree: DocItem[] = [];
     
@@ -127,60 +116,9 @@ const Sidebar = ({ activeSection }: SidebarProps) => {
       }
     });
 
-    return tree.sort((a, b) => a.order - b.order);
-  };
-
-  const getFallbackContent = (section: string): DocItem[] => {
-    const sectionContent = {
-      products: [
-        {
-          title: "Getting Started",
-          slug: "getting-started",
-          order: 1,
-          icon: "🚀",
-          children: [
-            { title: "Installation", slug: "getting-started/installation", order: 1 },
-            { title: "Quick Start", slug: "getting-started/quick-start", order: 2 },
-            { title: "Configuration", slug: "getting-started/configuration", order: 3 },
-          ]
-        },
-        {
-          title: "Examples",
-          slug: "examples",
-          order: 2,
-          children: [
-            { title: "Basic Usage", slug: "examples/basic-usage", order: 1 },
-            { title: "Advanced", slug: "examples/advanced", order: 2 },
-            { title: "Integrations", slug: "examples/integrations", order: 3 },
-          ]
-        }
-      ],
-      api: [
-        {
-          title: "API Reference",
-          slug: "api-reference",
-          order: 1,
-          icon: "📚",
-          children: [
-            { title: "Authentication", slug: "api-reference/authentication", order: 1 },
-            { title: "Endpoints", slug: "api-reference/endpoints", order: 2 },
-            { title: "Rate Limits", slug: "api-reference/rate-limits", order: 3 },
-          ]
-        },
-        {
-          title: "SDKs",
-          slug: "sdks",
-          order: 2,
-          children: [
-            { title: "JavaScript SDK", slug: "sdks/javascript", order: 1 },
-            { title: "Python SDK", slug: "sdks/python", order: 2 },
-            { title: "Go SDK", slug: "sdks/go", order: 3 },
-          ]
-        }
-      ]
-    };
-
-    return sectionContent[activeSection as keyof typeof sectionContent] || [];
+    const sortedTree = tree.sort((a, b) => a.order - b.order);
+    console.log('Final tree:', sortedTree);
+    return sortedTree;
   };
 
   useEffect(() => {
@@ -266,13 +204,52 @@ const Sidebar = ({ activeSection }: SidebarProps) => {
     );
   };
 
+  if (loading && docTree.length === 0) {
+    return (
+      <div className="p-3">
+        <div className="animate-pulse space-y-2">
+          <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+          <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+          <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-3">
+        <div className="text-sm text-red-600">
+          Error loading navigation: {error}
+        </div>
+      </div>
+    );
+  }
+
+  if (docTree.length === 0) {
+    return (
+      <div className="p-3">
+        <div className="text-sm text-muted-foreground">
+          No documentation found in the repository.
+          {(isAdmin || isEditor) && user && (
+            <div className="mt-2">
+              <span className="text-xs">Add .md files to the /docs folder in your GitHub repository.</span>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-0">
       <nav className="space-y-1">
-        {/* Only show configuration notice to logged in admins/editors */}
-        {!isConfigured && (isAdmin || isEditor) && user && (
-          <div className="px-3 py-2 mb-4 text-xs text-muted-foreground bg-yellow-50 border border-yellow-200 rounded">
-            Using fallback navigation. Configure GitHub in admin panel for dynamic content.
+        {/* Real-time update indicator */}
+        {lastUpdate && (
+          <div className="px-3 py-1 text-xs text-muted-foreground">
+            <span title={`Last updated: ${lastUpdate.toLocaleTimeString()}`}>
+              📡 Live from GitHub
+            </span>
           </div>
         )}
         {docTree.map(item => renderDocItem(item))}
