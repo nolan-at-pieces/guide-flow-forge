@@ -8,8 +8,24 @@ interface MDXRendererProps {
 
 const MDXRenderer = ({ content }: MDXRendererProps) => {
   const processedContent = useMemo(() => {
+    // First, remove everything before the first heading
+    const lines = content.split('\n');
+    let firstHeaderIndex = -1;
+    
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i].match(/^#{1,6}\s+/)) {
+        firstHeaderIndex = i;
+        break;
+      }
+    }
+    
+    // If we found a header, start content from there
+    const cleanedContent = firstHeaderIndex >= 0 
+      ? lines.slice(firstHeaderIndex).join('\n')
+      : content;
+
     // Enhanced markdown-to-HTML conversion with IDs for headings
-    let html = content
+    let html = cleanedContent
       .replace(/^# (.*$)/gm, (match, title) => {
         const id = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
         return `<h1 id="${id}" class="text-4xl font-bold mb-6 mt-8 first:mt-0 scroll-m-20">${title}</h1>`;
