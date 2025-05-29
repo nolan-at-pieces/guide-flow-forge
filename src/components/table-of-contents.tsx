@@ -68,7 +68,13 @@ const TableOfContentsComponent = ({ content }: TableOfContentsProps) => {
     }
   };
 
+  const getActiveIndex = () => {
+    return tocItems.findIndex(item => item.id === activeId);
+  };
+
   if (tocItems.length === 0) return null;
+
+  const activeIndex = getActiveIndex();
 
   return (
     <div className="w-64 shrink-0 hidden xl:block">
@@ -82,46 +88,35 @@ const TableOfContentsComponent = ({ content }: TableOfContentsProps) => {
             {/* Main vertical line */}
             <div className="absolute left-1 top-0 bottom-0 w-px bg-border"></div>
             
+            {/* Active section highlight bar */}
+            {activeIndex >= 0 && (
+              <div 
+                className="absolute left-0 w-1 bg-primary rounded-full transition-all duration-300 ease-out"
+                style={{
+                  top: `${activeIndex * 32 + 4}px`,
+                  height: '24px'
+                }}
+              ></div>
+            )}
+            
             <div className="space-y-0">
               {tocItems.map((item, index) => {
                 const isActive = activeId === item.id;
-                const nextItem = tocItems[index + 1];
-                const hasChildren = nextItem && nextItem.level > item.level;
                 
                 return (
                   <div key={item.id} className="relative">
-                    {/* Horizontal line */}
-                    <div className={cn(
-                      "absolute left-1 top-3 w-3 h-px bg-border",
-                      item.level === 1 && "w-4",
-                      item.level === 2 && "w-3 left-2",
-                      item.level === 3 && "w-3 left-3",
-                      item.level >= 4 && "w-3 left-4"
-                    )}></div>
-                    
-                    {/* Active indicator dot */}
-                    {isActive && (
-                      <div className={cn(
-                        "absolute top-3 w-1.5 h-1.5 bg-primary rounded-full transform -translate-y-0.5",
-                        item.level === 1 && "left-4",
-                        item.level === 2 && "left-4",
-                        item.level === 3 && "left-5",
-                        item.level >= 4 && "left-6"
-                      )}></div>
-                    )}
-                    
                     <button
                       onClick={() => scrollToHeading(item.id)}
                       className={cn(
-                        "block w-full text-left text-sm py-1.5 rounded transition-colors hover:bg-muted/50 relative",
+                        "block w-full text-left text-sm py-2 px-4 rounded transition-colors hover:bg-muted/50 relative",
                         isActive 
-                          ? "text-primary font-medium" 
+                          ? "text-primary font-medium bg-primary/5" 
                           : "text-muted-foreground hover:text-foreground",
-                        item.level === 1 && "font-medium pl-6",
-                        item.level === 2 && "pl-7",
+                        item.level === 1 && "font-medium",
+                        item.level === 2 && "pl-6",
                         item.level === 3 && "pl-8 text-xs",
-                        item.level === 4 && "pl-9 text-xs",
-                        item.level >= 5 && "pl-10 text-xs"
+                        item.level === 4 && "pl-10 text-xs",
+                        item.level >= 5 && "pl-12 text-xs"
                       )}
                     >
                       {item.text}
