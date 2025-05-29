@@ -17,7 +17,7 @@ const AppContent = () => (
         <Home />
       </Layout>
     } />
-    <Route path="/docs/*" element={<DocsPage />} />
+    <Route path="/*" element={<DocsPage />} />
   </Routes>
 );
 

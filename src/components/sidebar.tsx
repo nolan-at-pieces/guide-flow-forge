@@ -73,7 +73,7 @@ const Sidebar = () => {
     setDocTree(mockDocs);
     
     // Auto-expand the current section
-    const currentPath = location.pathname.replace('/docs/', '');
+    const currentPath = location.pathname.slice(1); // Remove leading slash
     const topLevelSection = currentPath.split('/')[0];
     if (topLevelSection) {
       setExpandedItems(new Set([topLevelSection]));
@@ -93,8 +93,8 @@ const Sidebar = () => {
   const renderDocItem = (item: DocItem, level = 0) => {
     const hasChildren = item.children && item.children.length > 0;
     const isExpanded = expandedItems.has(item.slug);
-    const isActive = location.pathname === `/docs/${item.slug}`;
-    const isInActivePath = location.pathname.startsWith(`/docs/${item.slug}/`);
+    const isActive = location.pathname === `/${item.slug}`;
+    const isInActivePath = location.pathname.startsWith(`/${item.slug}/`);
 
     return (
       <div key={item.slug} className="space-y-1">
@@ -116,7 +116,7 @@ const Sidebar = () => {
             <div className="w-6" />
           )}
           <Link
-            to={`/docs/${item.slug}`}
+            to={`/${item.slug}`}
             className={cn(
               "flex-1 block rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent hover:text-accent-foreground",
               (isActive || isInActivePath) && "bg-accent text-accent-foreground font-medium",

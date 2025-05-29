@@ -1,5 +1,6 @@
+
 import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useLocation } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import MDXRenderer from "@/components/mdx-renderer";
 import TableOfContentsComponent from "@/components/table-of-contents";
@@ -17,7 +18,11 @@ interface DocMeta {
 
 const DocsPage = () => {
   const params = useParams();
-  const slug = params["*"] || "getting-started";
+  const location = useLocation();
+  
+  // Remove leading slash and use as slug, default to getting-started
+  const slug = location.pathname.slice(1) || "getting-started";
+  
   const [docContent, setDocContent] = useState("");
   const [docMeta, setDocMeta] = useState<DocMeta | null>(null);
   const [loading, setLoading] = useState(true);
@@ -69,9 +74,9 @@ project.init().then(() => {
 
 ## Next Steps
 
-- Read the [API Reference](/docs/api-reference)
-- Check out [Examples](/docs/examples)
-- Learn about [Advanced Topics](/docs/advanced)
+- Read the [API Reference](/api-reference)
+- Check out [Examples](/examples)
+- Learn about [Advanced Topics](/advanced)
             `,
             meta: {
               title: "Getting Started",

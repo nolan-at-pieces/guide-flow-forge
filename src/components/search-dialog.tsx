@@ -91,7 +91,7 @@ const SearchDialog = ({ open, onOpenChange }: SearchDialogProps) => {
                   key={result.slug}
                   className="cursor-pointer rounded-md p-3 hover:bg-accent"
                   onClick={() => {
-                    window.location.href = `/docs/${result.slug}`;
+                    window.location.href = `/${result.slug}`;
                     onOpenChange(false);
                   }}
                 >
