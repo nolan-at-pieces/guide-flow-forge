@@ -71,29 +71,32 @@ export class GitHubDocsService {
   }
 
   private parseFrontmatter(content: string): { metadata: DocMetadata; content: string } {
-    // More robust frontmatter regex that handles different line endings and spacing
-    const frontmatterRegex = /^---\s*[\r\n]+([\s\S]*?)[\r\n]+---\s*[\r\n]+([\s\S]*)$/;
-    const match = content.match(frontmatterRegex);
+    // Handle different line endings and ensure we capture frontmatter properly
+    const normalizedContent = content.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    
+    // More precise frontmatter regex - must start at beginning of file
+    const frontmatterRegex = /^---\n([\s\S]*?)\n---\n?([\s\S]*)$/;
+    const match = normalizedContent.match(frontmatterRegex);
     
     if (!match) {
       console.log('No frontmatter found in content');
       // No frontmatter found, return content as-is with default metadata
       return {
         metadata: { title: 'Untitled', slug: '' },
-        content: content.trim()
+        content: normalizedContent.trim()
       };
     }
 
-    const frontmatter = match[1].trim();
-    const markdownContent = match[2].trim(); // This is the content WITHOUT frontmatter
+    const frontmatterSection = match[1];
+    const markdownContent = match[2]; // Content AFTER frontmatter
     
-    console.log('Frontmatter section:', frontmatter);
-    console.log('Markdown content (first 100 chars):', markdownContent.substring(0, 100));
+    console.log('Frontmatter found and will be removed from display');
+    console.log('Content after frontmatter removal starts with:', markdownContent.substring(0, 100));
     
     const metadata: any = {};
     
-    // Parse YAML-style frontmatter more carefully
-    const lines = frontmatter.split(/\r?\n/);
+    // Parse YAML-style frontmatter
+    const lines = frontmatterSection.split('\n');
     let currentKey = '';
     let inArray = false;
     let arrayItems: string[] = [];
@@ -158,12 +161,12 @@ export class GitHubDocsService {
       metadata[currentKey] = arrayItems;
     }
 
-    console.log('Parsed frontmatter metadata:', metadata);
-    console.log('Final content starts with:', markdownContent.substring(0, 100));
-
+    console.log('Parsed metadata:', metadata);
+    
+    // Return ONLY the markdown content without any frontmatter
     return {
       metadata: metadata as DocMetadata,
-      content: markdownContent // Return ONLY the markdown content without frontmatter
+      content: markdownContent.trim() // This should NOT contain frontmatter
     };
   }
 
