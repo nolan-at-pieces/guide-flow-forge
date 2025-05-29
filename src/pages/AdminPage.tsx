@@ -24,7 +24,7 @@ interface DocContent {
 }
 
 const AdminPage = () => {
-  const { user, isAdmin, isEditor, signOut } = useAuth();
+  const { user, isAdmin, isEditor, signOut, loading } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [content, setContent] = useState<DocContent[]>([]);
@@ -41,19 +41,96 @@ const AdminPage = () => {
     is_published: true
   });
 
+  // Debug logging
+  console.log('AdminPage - user:', user);
+  console.log('AdminPage - isAdmin:', isAdmin);
+  console.log('AdminPage - isEditor:', isEditor);
+  console.log('AdminPage - loading:', loading);
+
   useEffect(() => {
+    // Don't redirect while still loading
+    if (loading) return;
+    
     if (!user) {
+      console.log('No user, redirecting to auth');
       navigate('/auth');
       return;
     }
     
     if (!isAdmin && !isEditor) {
-      navigate('/');
+      console.log('User has no admin/editor roles, staying on page but showing message');
+      // Don't redirect, just show a message instead
       return;
     }
 
     fetchContent();
-  }, [user, isAdmin, isEditor, navigate]);
+  }, [user, isAdmin, isEditor, navigate, loading]);
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-8">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center">Loading...</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show login prompt if not authenticated
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-8">
+        <div className="max-w-6xl mx-auto">
+          <Card>
+            <CardHeader>
+              <CardTitle>Authentication Required</CardTitle>
+              <CardDescription>You need to sign in to access the admin panel.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button onClick={() => navigate('/auth')}>
+                Go to Sign In
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // Show role requirement if user doesn't have admin/editor roles
+  if (!isAdmin && !isEditor) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-8">
+        <div className="max-w-6xl mx-auto">
+          <Card>
+            <CardHeader>
+              <CardTitle>Access Denied</CardTitle>
+              <CardDescription>
+                You need admin or editor privileges to access this page.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="text-sm text-gray-600">
+                <p>Current user: {user.email}</p>
+                <p>User ID: {user.id}</p>
+                <p>Admin status: {isAdmin ? 'Yes' : 'No'}</p>
+                <p>Editor status: {isEditor ? 'Yes' : 'No'}</p>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => navigate('/')}>
+                  Go Home
+                </Button>
+                <Button variant="outline" onClick={handleSignOut}>
+                  Sign Out
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   const fetchContent = async () => {
     try {
@@ -187,10 +264,6 @@ const AdminPage = () => {
       });
     }
   };
-
-  if (!user || (!isAdmin && !isEditor)) {
-    return <div>Loading...</div>;
-  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">
