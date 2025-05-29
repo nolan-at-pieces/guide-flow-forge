@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useLocation, Link } from "react-router-dom";
 import { routeConfig } from "@/config/routes";
 import { Separator } from "@/components/ui/separator";
+import TopNav from "@/components/top-nav";
 
 interface DocItem {
   title: string;
@@ -13,18 +14,18 @@ interface DocItem {
   order: number;
   icon?: string;
   children?: DocItem[];
-  divider?: boolean; // Add divider property
-  dividerLabel?: string; // Add divider label property
+  divider?: boolean;
+  dividerLabel?: string;
 }
 
 const Sidebar = () => {
-  const [docTree, setDocTree] = useState<DocItem[]>([]);
+  const [activeSection, setActiveSection] = useState("products");
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const location = useLocation();
 
-  useEffect(() => {
-    // Mock documentation structure with dividers and labels
-    const mockDocs: DocItem[] = [
+  // Define content for each section
+  const sectionContent = {
+    products: [
       {
         title: "Products",
         slug: "products",
@@ -39,7 +40,7 @@ const Sidebar = () => {
         slug: "getting-started",
         order: 2,
         divider: true,
-        dividerLabel: "Documentation", // Add label for this section
+        dividerLabel: "Documentation",
         children: [
           { title: "Installation", slug: "getting-started/installation", order: 1 },
           { title: "Quick Start", slug: "getting-started/quick-start", order: 2 },
@@ -47,21 +48,9 @@ const Sidebar = () => {
         ]
       },
       {
-        title: "API Reference",
-        slug: "api-reference",
-        order: 3,
-        divider: true,
-        dividerLabel: "Developer Resources", // Add label for this section
-        children: [
-          { title: "Authentication", slug: "api-reference/authentication", order: 1 },
-          { title: "Endpoints", slug: "api-reference/endpoints", order: 2 },
-          { title: "Rate Limits", slug: "api-reference/rate-limits", order: 3 },
-        ]
-      },
-      {
         title: "Examples",
         slug: "examples",
-        order: 4,
+        order: 3,
         children: [
           { title: "Basic Usage", slug: "examples/basic-usage", order: 1 },
           { title: "Advanced", slug: "examples/advanced", order: 2 },
@@ -71,20 +60,65 @@ const Sidebar = () => {
       {
         title: "Troubleshooting",
         slug: "troubleshooting",
-        order: 5,
+        order: 4,
         divider: true,
-        dividerLabel: "Support", // Add label for this section
+        dividerLabel: "Support",
         children: [
           { title: "Common Issues", slug: "troubleshooting/common-issues", order: 1 },
           { title: "Debug Mode", slug: "troubleshooting/debug-mode", order: 2 },
         ]
       }
-    ];
-    setDocTree(mockDocs);
-    
-    // Auto-expand the current section using route config
+    ],
+    api: [
+      {
+        title: "API Reference",
+        slug: "api-reference",
+        order: 1,
+        children: [
+          { title: "Authentication", slug: "api-reference/authentication", order: 1 },
+          { title: "Endpoints", slug: "api-reference/endpoints", order: 2 },
+          { title: "Rate Limits", slug: "api-reference/rate-limits", order: 3 },
+        ]
+      },
+      {
+        title: "SDKs",
+        slug: "sdks",
+        order: 2,
+        divider: true,
+        dividerLabel: "Developer Tools",
+        children: [
+          { title: "JavaScript SDK", slug: "sdks/javascript", order: 1 },
+          { title: "Python SDK", slug: "sdks/python", order: 2 },
+          { title: "Go SDK", slug: "sdks/go", order: 3 },
+        ]
+      },
+      {
+        title: "Webhooks",
+        slug: "webhooks",
+        order: 3,
+        children: [
+          { title: "Setup", slug: "webhooks/setup", order: 1 },
+          { title: "Events", slug: "webhooks/events", order: 2 },
+          { title: "Security", slug: "webhooks/security", order: 3 },
+        ]
+      }
+    ]
+  };
+
+  const docTree = sectionContent[activeSection as keyof typeof sectionContent] || [];
+
+  useEffect(() => {
+    // Auto-expand the current section and determine active section from URL
     const currentSlug = routeConfig.extractSlug(location.pathname);
     const topLevelSection = currentSlug.split('/')[0];
+    
+    // Determine which section should be active based on current route
+    if (currentSlug.startsWith('api-reference') || currentSlug.startsWith('sdks') || currentSlug.startsWith('webhooks')) {
+      setActiveSection("api");
+    } else {
+      setActiveSection("products");
+    }
+    
     if (topLevelSection) {
       setExpandedItems(new Set([topLevelSection]));
     }
@@ -161,8 +195,9 @@ const Sidebar = () => {
   };
 
   return (
-    <div className="space-y-2">
-      <div className="pb-4">
+    <div className="space-y-0">
+      <TopNav activeSection={activeSection} onSectionChange={setActiveSection} />
+      <div className="p-6">
         <nav className="space-y-1">
           {docTree.map(item => renderDocItem(item))}
         </nav>
