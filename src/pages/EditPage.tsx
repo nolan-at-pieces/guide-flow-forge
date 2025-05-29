@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -8,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { ArrowLeft, Plus, FileText, Home, Settings } from 'lucide-react';
 import MarkdownEditor from '@/components/editor/MarkdownEditor';
 import GitHubIntegration from '@/components/editor/GitHubIntegration';
+import Sidebar from '@/components/sidebar';
 import { useGitHubDocs } from '@/hooks/useGitHubDocs';
 import { DocContent } from '@/services/githubApi';
 
@@ -21,6 +21,7 @@ const EditPage = () => {
   const [docContent, setDocContent] = useState<DocContent | null>(null);
   const [loading, setLoading] = useState(true);
   const [isNewPage, setIsNewPage] = useState(false);
+  const [activeSection, setActiveSection] = useState("products");
 
   useEffect(() => {
     if (!user) {
@@ -246,12 +247,30 @@ const EditPage = () => {
             <Button variant="outline" onClick={() => navigate('/admin')}>
               Admin Panel
             </Button>
+            <Button variant="outline" onClick={() => navigate('/')}>
+              <Home className="w-4 h-4 mr-2" />
+              View Site
+            </Button>
           </div>
         </div>
       </div>
 
-      {/* Main Editor */}
+      {/* Main Editor Layout */}
       <div className="flex h-[calc(100vh-57px)]">
+        {/* Left Sidebar - Navigation */}
+        <div className="w-64 border-r bg-muted/20">
+          <div className="h-full overflow-auto">
+            <div className="p-4 border-b">
+              <h3 className="font-semibold text-sm">Documentation</h3>
+              <p className="text-xs text-muted-foreground mt-1">Click to edit pages</p>
+            </div>
+            <div className="p-2">
+              <Sidebar activeSection={activeSection} />
+            </div>
+          </div>
+        </div>
+        
+        {/* Main Editor */}
         <div className="flex-1">
           {docContent && (
             <MarkdownEditor
